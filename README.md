@@ -1,2 +1,2 @@
 # python-SudokuSolver
-Classes and functions for the representation and solutions of Sudokus
+Classes and functions for the representation and solution of Sudokus
