@@ -1,0 +1,27 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project_euler_solutions"
+version = "1.0.0"
+description = "Solutions to Project Euler problems"
+readme = "README.md"
+authors = [{ name = "Christopher Holland", email = "chris.henry.holland@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["sudoku", "python", "backtracking" "mathematics", "algorithm"]
+dependencies = [
+    "sortedcontainers>=2.4.0",
+    "numpy>=1.26.0",
+]
+requires-python = ">=3.11"
+
+[project.urls]
+Repository = "https://github.com/chris-henry-holland/python-SudokuSolver.git"
