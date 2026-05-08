@@ -42,12 +42,26 @@ class Sudoku(object):
 
         Args:
             initial_board (list[list[int]]): _description_
-            box_shape (tuple[int, int], optional): _description_.
+            box_shape (tuple[int, int], optional): 
                 
-                Defaults to (3, 3)
+                Default: (3, 3)
 
         Raises:
-            ValueError: Raised if the dimensions of 
+            TypeError: Raised if initial_board, its components
+                    or the componenets of its components are not
+                    of the correct type (indexable, indexable and
+                    integer types respectively) or box_shape or
+                    its components are not of the correct type
+                    (indexable or integer types respectively)/
+            ValueError: Raised if the dimensions of initial_board
+                    or box_shape are incorrect, if the dimensions
+                    of initial_board are incompatible with box_shape,
+                    if the values in initial_board or box_shape are
+                    not in the permitted range or the Sudoku board
+                    in initial_board contains direct conflicts (i.e.
+                    a non-zero integer appears more than once in
+                    a row, column or box).
+
         """
         self.checkBoxShapeValid(
             box_shape,
@@ -106,12 +120,6 @@ class Sudoku(object):
                 enc_idx_arr[i1, i2] = self.encodeIndices(i1, i2)
         return enc_idx_arr
 
-    #@property
-    #def enc_idx_arr(self) -> np.ndarray:
-    #    if getattr(self, "_enc_idx_arr", None) is None:
-    #        self._enc_idx_arr = self._createIndexArray()
-    #    return self._enc_idx_arr
-
     def checkBoardForImmediateConflicts(self, board: list[list[int]]) -> bool:
         for row in board:
             seen = set()
@@ -126,7 +134,6 @@ class Sudoku(object):
             for row in board:
                 if not row[i2]: continue
                 if row[i2] in seen:
-                    #print(2, (i1, i2))
                     return True
                 seen.add(row[i2])
         for i1_0 in range(0, self.board_side_length, self.box_shape[0]):
@@ -134,11 +141,9 @@ class Sudoku(object):
                 seen = set()
                 for i1 in range(i1_0, i1_0 + self.box_shape[0]):
                     for i2 in range(i2_0, i2_0 + self.box_shape[1]):
-                        #print((i1, i2), seen)
                         if not board[i1][i2]:
                             continue
                         if board[i1][i2] in seen:
-                            #print(3, (i1, i2))
                             return True
                         seen.add(board[i1][i2])
         return False
@@ -159,11 +164,9 @@ class Sudoku(object):
         box_shape: tuple[int, int],
         initial_numbers_bold: bool=False,
     ) -> str:
-        base = 10
         
         board_side_len = box_shape[0] * box_shape[1]
         max_n_dig = len(str(board_side_len))
-        #num = board_side_len
 
         def getNumString(num: int, is_bold: bool=False) -> str:
             if not num:
@@ -197,7 +200,6 @@ class Sudoku(object):
             row_lst.append(mid_row)
         addLayerString(board_side_len - box_shape[0])
         row_lst.append(end_row)
-        #print(row_lst)
         return "\n".join(row_lst)
 
     def getInitialBoardPrintString(self, initial_numbers_bold: bool=False) -> None:
@@ -205,9 +207,6 @@ class Sudoku(object):
 
     def __str__(self) -> str:
         return self.getInitialBoardPrintString(initial_numbers_bold=True)
-
-    #def printCurrentBoardToTerminal(self) -> None:
-    #    pass
 
     @classmethod
     def loadSudokuFromCSV(cls, filename_in: str) -> Sudoku:
@@ -259,10 +258,8 @@ class Sudoku(object):
             #raise ValueError("Sudoku too large to solve (only accepts sudoku side length no greater than 64)")
         opts_count_dict = SortedDict()
         z_val = (1 << num_mx) - 1
-        #n_set = 0
         
         curr_state_bm = np.full(shape=(self.board_side_length, self.board_side_length), fill_value=z_val, dtype=dtype)
-        #unset_opts = np.full(shape=(2, 3, self.board_side_length), fill_value=z_val, dtype=dtype)
         region_available_nums_bm = np.full(shape=(3, self.board_side_length), fill_value=z_val, dtype=dtype)
         region_available_spaces_bm = np.full(shape=(3, self.board_side_length), fill_value=z_val, dtype=dtype)
         for i1 in range(num_mx):
@@ -297,7 +294,6 @@ class Sudoku(object):
 
     @staticmethod
     def bitmaskIndicesGenerator(bm: np.uint) -> Generator[int, None, None]:
-        #print(bm)
         while bm:
             bm2 = np.bitwise_and(bm, ~(bm - 1))
             yield np.frexp(bm2)[1] - 1
@@ -306,14 +302,12 @@ class Sudoku(object):
 
     def stateArray2Board(self, state_bm: np.ndarray) -> list[list[int]]:
         num_mx = self.board_side_length
-        #print(state_bm)
         res = [[0] * num_mx for _ in range(num_mx)]
         for i1 in range(num_mx):
             for i2 in range(num_mx):
                 bm = state_bm[i1][i2]
                 if not bm: return []
                 res[i1][i2] = 0 if np.bitwise_count(bm) > 1 else int(self.getSmallestSetBit(bm)) + 1
-        #print(state_bm)
         return res
 
     def getRowSlice(self, row_idx: int) -> tuple[slice, slice]:
@@ -357,7 +351,6 @@ class Sudoku(object):
                 res = tuple(x * y + z for x, y, z in zip(box_ext_inds, self.box_shape, box_int_inds))
             case _:
                 raise ValueError("slc_typ must be an integer between 0 and 2 inclusive")
-        #print(region_typ_idx, region_inds, res)
         return res
     
     def regionIndices2EncodedPosition(self, region_typ_idx: int, region_inds: tuple[int, int]) -> int:
@@ -373,7 +366,14 @@ class Sudoku(object):
     def getRegionIndicesFromEncodedPosition(self, enc_idx: int) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
         return self.getRegionIndicesFromPosition(*self.decodeIndices(enc_idx))
 
-    def _simplifyState(self, state_bm: np.ndarray, opts_count_dict: SortedDict, region_available_nums_bm: np.ndarray, region_available_spaces_bm: np.ndarray, enc_inds_changed: set[int]) -> bool:
+    def _simplifyState(
+        self,
+        state_bm: np.ndarray,
+        opts_count_dict: SortedDict,
+        region_available_nums_bm: np.ndarray,
+        region_available_spaces_bm: np.ndarray,
+        enc_inds_changed: set[int],
+    ) -> bool:
         
         dtype = state_bm.dtype.type
         if dtype == object: dtype = int
@@ -387,31 +387,25 @@ class Sudoku(object):
             
             idx1, idx2 = self.decodeIndices(enc_idx)
             
-            #row_inds, col_inds, box_inds = self.getRegionIndicesFromPosition(idx1, idx2)
             region_inds_lst = self.getRegionIndicesFromPosition(idx1, idx2)
             bm0 = state_bm[idx1, idx2]
             chk_bm0 = dtype((1 << num_mx) - 1) ^ bm0
             
             # Checking for elements that share a region with the changed element that
             # are now the only potential representative of a given digit
-            #for typ_idx, slc, ravel_idx in (("row", self.getRowSlice(row_inds[0]), row_inds[1]), ("column", self.getColumnSlice(col_inds[0]), col_inds[1]), ("box", self.getBoxSlice(box_inds[0]), box_inds[1])):
             for region_typ_idx, region_inds in enumerate(region_inds_lst):
                 slc = self.getSlice(region_typ_idx, region_inds[0])
                 slc_arr = np.ravel(state_bm[*slc], order="C")
                 region_int_idx = region_inds[1]
-                #slc_idx_arr = np.ravel(self.enc_idx_arr[*slc], order="C")
-                chk_bm = chk_bm0
+                chk_bm = np.bitwise_and(chk_bm0, region_available_nums_bm[region_typ_idx, region_inds[0]])
                 for bm2 in slc_arr:
                     if np.bitwise_count(bm2) == 1:
                         chk_bm = np.bitwise_and(chk_bm, ~bm2)
                 for bm2 in self.bitmaskComponentsGenerator(chk_bm):
                     slc_idx_lst = np.where(np.bitwise_and(slc_arr, bm2))[0]
                     if len(slc_idx_lst) != 1: continue
-                    #enc_idx2 = slc_idx_arr[slc_idx_lst[0]]
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], slc_idx_lst[0]))
                     enc_idx2 = self.encodeIndices(*inds2)
-                    #print(region_typ_idx, (region_inds[0], slc_idx_lst[0]), enc_idx2, enc_idx3)
-                    #inds2 = self.decodeIndices(enc_idx2)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt <= 1:
                         return False
@@ -426,21 +420,13 @@ class Sudoku(object):
 
             # The changed element has only one option
             bm0_compl = ~bm0
-            #for slc in (self.getRowSlice(row_idx), self.getColumnSlice(col_idx), self.getBoxSlice(box_idx)):
             for region_typ_idx, region_inds in enumerate(region_inds_lst):
                 slc = self.getSlice(region_typ_idx, region_inds[0])
                 slc_arr = np.ravel(state_bm[*slc], order="C")
-                #slc_idx_arr = np.ravel(self.enc_idx_arr[*slc], order="C")
                 region_int_idx_set = set(np.where(np.bitwise_and(slc_arr, bm0))[0]) - {region_inds[1]}
-                #enc_idx_set = set(slc_idx_arr[j] for j in slc_idx_lst) - {enc_idx}
-                #enc_idx_set = set(self.regionIndices2EncodedPosition(region_typ_idx, (region_inds[0], slc_idx_set)))
-                #for enc_idx2 in enc_idx_set:
                 for region_int_idx in region_int_idx_set:
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], region_int_idx))
                     enc_idx2 = self.encodeIndices(*inds2)
-                    #enc_idx2 = slc_idx_arr[region_int_idx]
-                    #inds2 = self.decodeIndices(enc_idx2)
-                    #print(region_typ_idx, (region_inds[0], region_int_idx), enc_idx2, enc_idx3)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt == 1: return False
                     state_bm[*inds2] = np.bitwise_and(state_bm[*inds2], ~bm0)
@@ -464,14 +450,7 @@ class Sudoku(object):
         enc_inds_changed = set(range(self.board_side_length * self.board_side_length))
         for enc_inds in opts_count_dict.values():
             enc_inds_changed -= enc_inds
-        #print(self.getBoardPrintString(self.stateArray2Board(state_bm), self.box_shape))
-        #print(opts_count_dict)
         self._simplifyState(state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm, enc_inds_changed)
-
-        #print(self.getBoardPrintString(self.stateArray2Board(state_bm), self.box_shape))
-        #print(opts_count_dict)
-        #num_mx = self.board_side_length
-        #n_small_sq = num_mx * num_mx
 
         def recur(
             state_bm: np.ndarray,
@@ -479,28 +458,17 @@ class Sudoku(object):
             region_available_nums_bm: np.ndarray,
             region_available_spaces_bm: np.ndarray,
         ) -> Generator[list[list[list[int]]], None, None]:
-            #print(region_available_nums_bm)
-            #print(region_available_spaces_bm)
-            #print(self.getBoardPrintString(self.stateArray2Board(state_bm), self.box_shape))
-            #print(state_bm)
-            #print(opts_count_dict)
             if not opts_count_dict:
-                #print("solution found")
                 yield self.stateArray2Board(state_bm)
-                #print(region_available_nums_bm)
-                #print(region_available_spaces_bm)
                 return
             
             dtype = state_bm.dtype.type
             if dtype == object: dtype = int
-            #print(f"dtype = {dtype}")
             
             n_opts, enc_inds = opts_count_dict.peekitem(0)
-            #print(opts_count_dict)
             enc_idx = next(iter(enc_inds))
             idx1, idx2 = self.decodeIndices(enc_idx)
             for j in self.bitmaskIndicesGenerator(state_bm[idx1, idx2]):
-                #print(f"setting enc_idx {enc_idx} (({idx1}, {idx2})) to {j + 1}")
                 state_bm2 = copy.deepcopy(state_bm)
                 num_bm = dtype(1 << j)
                 num_bm_compl = ~num_bm
@@ -514,26 +482,7 @@ class Sudoku(object):
                     region_available_nums_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_nums_bm2[region_typ_idx, region_inds[0]], num_bm_compl)
                     region_available_spaces_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_spaces_bm2[region_typ_idx, region_inds[0]], ~dtype(1 << region_inds[1]))
                 if not opts_count_dict2[n_opts]: opts_count_dict2.pop(n_opts)
-                #print(state_bm2)
-                #print(opts_count_dict2)
                 if self._simplifyState(state_bm2, opts_count_dict2, region_available_nums_bm2, region_available_spaces_bm2, {enc_idx}):
-                    #print(self.getBoardPrintString(self.stateArray2Board(state_bm2), self.box_shape))
-                    #print(state_bm)
-                    #print(state_bm2)
-                    #print(opts_count_dict2)
-                    #mult_opts_cnt = 0
-                    #for i1 in range(self.board_side_length):
-                    #    for i2 in range(self.board_side_length):
-                    #        n_opts3 = int(state_bm2[i1, i2]).bit_count()
-                    #        if n_opts3 <= 1: continue
-                    #        mult_opts_cnt += 1
-                    #        enc_idx3 = self.encodeIndices(i1, i2)
-                    #        if enc_idx3 not in opts_count_dict2.get(n_opts3, set()):
-                    #            print(f"the number of options for position ({i1}, {i2}) (encoded {enc_idx3}) is inconsistent between the state array and the options count dictionary")
-                    #            print(f"bitmask for element encoded index {enc_idx3} = {format(state_bm2[i1, i2], 'b')}, n_opts = {n_opts3}, set of encoded indices with 3 options = {opts_count_dict2.get(n_opts3, set())}")
-                    #if mult_opts_cnt != sum(len(x) for x in opts_count_dict2.values()):
-                    #    print(f"the number of elements with multiple options is inconsistent between the state array and the options count dictionary")
-                    #print("calling recur()")
                     yield from recur(state_bm2, opts_count_dict2, region_available_nums_bm2, region_available_spaces_bm2)
             return
 
@@ -546,19 +495,10 @@ def main() -> None:
     elif len(sys.argv) > 2:
         sys.exit("Too many command line arguments")
     filename = sys.argv[1]
-    #filename_in = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../sudoku_csv_files/three_by_two/easy1.csv")
-    #filename_in = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../sudoku_csv_files/two_by_three/easy1.csv")
     filename_in = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), f"../sudoku_csv_files/{filename}"))
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
+    print("Initial Sudoku:")
     print(sudoku)
-    """
-    side_len = sudoku.board_side_length
-    for i1 in range(side_len):
-        for i2 in range(side_len):
-            enc_idx = sudoku.encodeIndices(i1, i2)
-            row_idx, col_idx, box_idx = sudoku.getRegionIndicesFromPosition(i1, i2) 
-            print((i1, i2), enc_idx, sudoku.getBoxSlice(box_idx))
-    """
     sol_cnt = 0
     since = time.time()
     for sol in sudoku.solutionsGenerator():
@@ -566,10 +506,11 @@ def main() -> None:
         print(f"Solution {sol_cnt}")
         print(sudoku.getBoardPrintString(sol, sudoku.box_shape, initial_numbers_bold=True))
         print(f"solution is {'' if sudoku.checkSolutionValid(sol) else 'in'}valid")
-        print(f"total time to find solution {sol_cnt} = {(time.time() - since):.4f} seconds")
-    print(f"time to search for all possible solutions = {(time.time() - since):.4f} seconds")
-    print(f"total number of solutions = {sol_cnt}")
-    
+        print(f"total search time before finding solution {sol_cnt} = {(time.time() - since):.4f} seconds")
+    t = (time.time() - since)
+
+    print(f"\ntotal number of solutions = {sol_cnt}")
+    print(f"time to search for all possible solutions = {t:.4f} seconds")
     return
 
 if __name__ == "__main__":
