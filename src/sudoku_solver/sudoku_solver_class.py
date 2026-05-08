@@ -27,6 +27,13 @@ class Sudoku(object):
     Attributes:
         object (_type_): _description_
 
+        box_shape (tuple[int, int]):
+        
+                Note that this means that moving along a given row
+                of the Sudoku, box_shape[1] different boxes are
+                encountered and moving down a given column,
+                box_shape[0] different boxes are encountered.
+
     """
     region_typ_strs = ["row", "column", "box"]
 
@@ -41,10 +48,27 @@ class Sudoku(object):
         (as specified by initial_board).
 
         Args:
-            initial_board (list[list[int]]): _description_
-            box_shape (tuple[int, int], optional): 
-                
-                Default: (3, 3)
+            initial_board (list[list[int]]): A list of lists of
+                    integers, representing the Sudoku board, where
+                    each inner list represents a row of the Sudoku
+                    board. The outer list and each of the inner lists
+                    must have the same number of elements as the side
+                    length of the Sudoku grid (equal to the product of
+                    the two box_shape dimensions, by default 9), and each
+                    element of the inner list must be an integer between
+                    0 and the side length of the Sudoku grid inclusive,
+                    with the elements with set initial values given by
+                    that strictly positive integer value and the
+                    initially unset elements represented by the value
+                    zero.
+            box_shape (tuple[int, int], optional): 2-tuple of strictly
+                    positive integers specifying the shape of the
+                    sudoku boxes, where index 0 represents the number
+                    of rows and index 1 represents the number of columns.
+                    This determines the size of the Sudoku grid, it being
+                    a square with side length equal to the product of the
+                    two box_shape dimensions.
+                Default: (3, 3) (the standard 9x9 Sudoku)
 
         Raises:
             TypeError: Raised if initial_board, its components
@@ -62,6 +86,56 @@ class Sudoku(object):
                     a non-zero integer appears more than once in
                     a row, column or box).
 
+        Examples:
+        >>> sudoku = Sudoku(
+                [
+                    [7,8,0,4,0,0,1,2,0]
+                    [6,0,0,0,7,5,0,0,9]
+                    [0,0,0,6,0,1,0,7,8]
+                    [0,0,7,0,4,0,2,6,0]
+                    [0,0,1,0,5,0,9,3,0]
+                    [9,0,4,0,6,0,0,0,5]
+                    [0,7,0,3,0,0,0,1,2]
+                    [1,2,0,0,0,7,4,0,0]
+                    [0,4,9,2,0,6,0,0,7]
+                ],
+            )
+        >>> print(sudoku)
+         -----------------------------
+        ┆ 7  8    │ 4       │ 1  2    ┆
+        ┆ 6       │    7  5 │       9 ┆
+        ┆         │ 6     1 │    7  8 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆       7 │    4    │ 2  6    ┆
+        ┆       1 │    5    │ 9  3    ┆
+        ┆ 9     4 │    6    │       5 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆    7    │ 3       │    1  2 ┆
+        ┆ 1  2    │       7 │ 4       ┆
+        ┆    4  9 │ 2     6 │       7 ┆
+         -----------------------------
+
+        >>> sudoku = Sudoku(
+                [
+                    [1,2,0,4,0,5]
+                    [4,6,0,0,2,0]
+                    [0,0,0,6,4,1]
+                    [0,4,5,3,0,0]
+                    [6,0,4,1,0,2]
+                    [0,0,6,0,3,4]
+                ],
+                box_shape=(3, 2),
+            )
+        >>> print(sudoku)
+         --------------------
+        ┆ 1  2 │    4 │    5 ┆
+        ┆ 4  6 │      │ 2    ┆
+        ┆      │    6 │ 4  1 ┆
+        ┆──────┼──────┼──────┆
+        ┆    4 │ 5  3 │      ┆
+        ┆ 6    │ 4  1 │    2 ┆
+        ┆      │ 6    │ 3  4 ┆
+         --------------------
         """
         self.checkBoxShapeValid(
             box_shape,
@@ -74,31 +148,123 @@ class Sudoku(object):
             board_name="initialization argument initial_board",
         )
         self._initial_board = tuple(tuple(row) for row in initial_board)
-        if self.checkBoardForImmediateConflicts(initial_board):
+        if self.checkBoardForImmediateConflicts(initial_board, self.box_shape):
             raise ValueError("The Sudoku board represented by initialization argument initial_board contains a direct conflict")
 
     @staticmethod
-    def checkBoxShapeValid(box_shape_prov: Any, box_shape_name: str) -> None:
-        if len(box_shape_prov) != 2:
+    def checkBoxShapeValid(
+        box_shape_prov: Any,
+        box_shape_name: str="box shape",
+    ) -> None:
+        """
+        Static method to check whether a value given for the attribute
+        box_shape (representing the dimensions of the boxes in the
+        Sudoku grid) is valid. An invalid value results in an exception
+        being raised.
+
+        A value for box_shape is valid if and only if it is an
+        iterable indexable container (e.g. a list or tuple) with exactly
+        two elements, both being strictly positive ints.
+
+        Args:
+            box_shape_prov (Any): Proposed box_shape value to be
+                    checked for validity.
+            box_shape_name (str, optional): The name given to the
+                    proposed box_shape value in any potential error
+                    message.
+
+        Returns:
+        None
+
+        Raises:
+            TypeError: Raised if the proposed box_shape value is not an
+                    indexable container or any of its elements are not
+                    integer types
+            ValueError: Raised if box_shape does not contain exactly two
+                    elements or either of its elements are not strictly
+                    positive.
+        """
+        if not hasattr(box_shape_prov, "__getitem__"):
+            raise TypeError(f"{box_shape_name} must an indexable container")
+        box_shape_prov2 = tuple(box_shape_prov)
+        if len(box_shape_prov2) != 2:
             raise ValueError(f"{box_shape_name} must have exactly two elements")
-        elif not all(isinstance(x, int) for x in box_shape_prov):
+        elif not all(isinstance(x, int) for x in box_shape_prov2):
             raise TypeError(f"Each element of {box_shape_name} must be an integer")
-        elif any(x <= 0 for x in box_shape_prov):
+        elif any(x <= 0 for x in box_shape_prov2):
             raise ValueError(f"Every element of {box_shape_name} must be strictly positive")
         return
 
     @property
     def box_shape(self) -> tuple[int, int]:
+        """
+        Read-only property
+
+        tuple[int, int]: 2-tuple of strictly positive ints representing
+        the box shape of the Sudoku, with index 0 containing
+        the number of rows of the grid in each box and index 1
+        containing the number of columns of the grid in each box.
+        """
         return self._box_shape
 
     @property
     def board_side_length(self) -> int:
+        """
+        Read-only property
+
+        int: Strictly positive integer representing the number of rows
+        and columns in the Sudoku board (which we refer to as the side
+        length). This is derived from the attribute box_shape, being the
+        product of the two values in that attribute.
+        """
         if getattr(self, "_board_shape", None) is None:
             self._board_side_length = self.box_shape[0] * self.box_shape[1]
         return self._board_side_length
 
     @staticmethod
-    def checkBoardFormatValid(board_prov: Any, board_side_length: int, board_name: str) -> None:
+    def checkBoardFormatValid(
+        board_prov: Any,
+        board_side_length: int,
+        board_name: str,
+    ) -> None:
+        """
+        Static method to check whether a value given for the attribute
+        board (representing the values in the Sudoku board) is of a
+        valid format, given a (presumed valid) side length of the Sudoku
+        board board_side_length. An invalid value results in an exception
+        being raised.
+
+        A value for board_prov is for a given strictly positive integer
+        board_side_length has a valid format if and only if TODO
+
+        Note that this only checks the format of the board. It does not
+        check whether the Sudoku is solvable or even whether there are
+        immediate conflicts between set values (the latter of which
+        can be checked instead by the method
+        checkBoardForImmediateConflicts()).
+
+        Args:
+            board_prov (Any): Proposed board value to be checked for
+                    validity.
+            board_side_length (int): Strictly positive integer giving
+                    the required side length (i.e. the number of rows
+                    and columns) of the Sudoku board that board_prov
+                    is intended to represent.
+            board_name (str, optional): The name given to the proposed
+                    board value in any potential error message.
+
+        Returns:
+        None
+
+        Raises:
+            TODO
+            TypeError: Raised if the proposed box_shape value is not an
+                    indexable container or any of its elements are not
+                    integer types
+            ValueError: Raised if box_shape does not contain exactly two
+                    elements or either of its elements are not strictly
+                    positive.
+        """
         if len(board_prov) != board_side_length:
             raise ValueError(f"{board_name} must have length {board_side_length}")
         if any(len(row) != board_side_length for row in board_prov):
@@ -111,6 +277,20 @@ class Sudoku(object):
     
     @property
     def initial_board(self) -> tuple[tuple[int, ...], ...]:
+        """
+        Read-only property
+
+        tuple[tuple[int, ...], ...]: Tuple of tuples of ints representing
+        the values in the initial Sudoku board (as given on initialization).
+        The outer tuple and each inner tuple have length equal to the
+        attribute board_side_length, with the inner tuples representing the
+        initial Sudoku board rows in order from top to bottom, and each
+        integer representing the Sudoku board elements in that row from
+        left to right, with elements that are initially set (i.e. the
+        values that are given at the beginning of the puzzle) equal to that
+        set value and elements that are not initially set (i.e. the values
+        that are to be determined when solving the puzzle) equal to 0.
+        """
         return self._initial_board
     
     def _createIndexArray(self) -> np.ndarray:
@@ -120,7 +300,43 @@ class Sudoku(object):
                 enc_idx_arr[i1, i2] = self.encodeIndices(i1, i2)
         return enc_idx_arr
 
-    def checkBoardForImmediateConflicts(self, board: list[list[int]]) -> bool:
+    @staticmethod
+    def checkBoardForImmediateConflicts(
+        board: list[list[int]],
+        box_shape: tuple[int, int],
+    ) -> bool:
+        """
+        Static method determining whether a Sudoku board with
+        a given box shape contains any immediate conflicts
+        (i.e. there is a row, column or box that contains
+        more than one of the same set number).
+
+        Note that a returned value of False does not guarantee
+        that the Sudoku board has a solution (though a returned
+        value of True guarantees that the Sudoku board does
+        not have a solution).
+
+        Args:
+            board (list[list[int]]): TODO
+
+                    It is assumed that the format of board is
+                    valid for the given box shape.
+            box_shape (tuple[int, int]): 2-tuple of strictly
+                    positive integers specifying the shape of the
+                    Sudoku boxes of the Sudoku represented by board,
+                    where index 0 and 1 represent the number of rows
+                    and columns respectively of the grid that appear
+                    in each box.
+
+        Returns:
+            bool: Boolean specifying whether for the given Sudoku
+                    box shape, the Sudoku represented by board
+                    contains any immediate conflicts, True indicating
+                    that at least one such conflict was identified
+                    and False indicating that no such conflicts were
+                    identified.
+        """
+        board_side_length = box_shape[0] * box_shape[1]
         for row in board:
             seen = set()
             for num in row:
@@ -129,18 +345,18 @@ class Sudoku(object):
                     #print(1, (i1, i2))
                     return True
                 seen.add(num)
-        for i2 in range(self.board_side_length):
+        for i2 in range(board_side_length):
             seen = set()
             for row in board:
                 if not row[i2]: continue
                 if row[i2] in seen:
                     return True
                 seen.add(row[i2])
-        for i1_0 in range(0, self.board_side_length, self.box_shape[0]):
-            for i2_0 in range(0, self.board_side_length, self.box_shape[1]):
+        for i1_0 in range(0, board_side_length, box_shape[0]):
+            for i2_0 in range(0, board_side_length, box_shape[1]):
                 seen = set()
-                for i1 in range(i1_0, i1_0 + self.box_shape[0]):
-                    for i2 in range(i2_0, i2_0 + self.box_shape[1]):
+                for i1 in range(i1_0, i1_0 + box_shape[0]):
+                    for i2 in range(i2_0, i2_0 + box_shape[1]):
                         if not board[i1][i2]:
                             continue
                         if board[i1][i2] in seen:
@@ -148,7 +364,19 @@ class Sudoku(object):
                         seen.add(board[i1][i2])
         return False
     
-    def checkSolutionValid(self, board: list[list[int]]) -> bool:
+    def checkSolutionValid(
+        self,
+        board: list[list[int]],
+    ) -> bool:
+        """
+        ***HERE***
+
+        Args:
+            board (list[list[int]]): _description_
+
+        Returns:
+            bool: _description_
+        """
         num_mx = self.board_side_length
         for i1 in range(num_mx):
             for i2 in range(num_mx):
@@ -156,7 +384,7 @@ class Sudoku(object):
                     return False
                 elif self.initial_board[i1][i2] and board[i1][i2] != self.initial_board[i1][i2]:
                     return False
-        return not self.checkBoardForImmediateConflicts(board)
+        return not self.checkBoardForImmediateConflicts(board, self.box_shape)
 
     def getBoardPrintString(
         self,
