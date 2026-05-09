@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import (
     Any,
     Generator,
+    Optional,
 )
 
 import copy
@@ -369,30 +370,57 @@ class Sudoku(object):
         board: list[list[int]],
     ) -> bool:
         """
-        ***HERE***
+        Identifies whether a given Sudoku board represents a solution
+        to this Sudoku.
+
+        A Sudoku board is a valid solution to this Sudoku if and only
+        if every one of the following conditions are true:
+         1) It is a valid format for a Sudoku board (so represents a 
+             square grid of integers containing non-negative values no
+             greater than the side length of the board).
+         2) It has side length equal to the attribute board_side_length
+             (and so the same dimensions as the Sudoku represented by
+             this object).
+         3) Every element is set (i.e. has no zero values and the
+             Sudoku is completed).
+         4) The board has no immediate conflicts for the box dimensions
+             of this Sudoku (so no row, column or box contains the same
+             number more than once).
 
         Args:
-            board (list[list[int]]): _description_
+            board (list[list[int]]): A list of lists of integers,
+                    representing the Sudoku board to be checked as to
+                    whether it is a solution to this Sudoku.
 
         Returns:
-            bool: _description_
+            bool: True if board represents a valid solution to the
+                    Sudoku represented by this object, otherwise False.
         """
+        
+        try:
+            self.checkBoardFormatValid(
+                board,
+                self.board_side_length,
+                "proposed solution",
+            )
+        except (ValueError, TypeError, IndexError):
+            return False
         num_mx = self.board_side_length
         for i1 in range(num_mx):
             for i2 in range(num_mx):
-                if not isinstance(board[i1][i2], int) or board[i1][i2] < 1 or board[i1][i2] > num_mx:
-                    return False
-                elif self.initial_board[i1][i2] and board[i1][i2] != self.initial_board[i1][i2]:
+                if self.initial_board[i1][i2] and board[i1][i2] != self.initial_board[i1][i2]:
                     return False
         return not self.checkBoardForImmediateConflicts(board, self.box_shape)
 
+    @staticmethod
     def getBoardPrintString(
-        self,
         board: list[list[int]],
         box_shape: tuple[int, int],
         initial_numbers_bold: bool=False,
+        initial_board: Optional[list[list[int]]]=None,
     ) -> str:
         
+
         board_side_len = box_shape[0] * box_shape[1]
         max_n_dig = len(str(board_side_len))
 
@@ -411,12 +439,14 @@ class Sudoku(object):
         mid_row = "".join(["┆", "┼".join(["─" * ((box_shape[1] * (max_n_dig + 2)) + 0)] * box_shape[0]), "┆"])
         row_lst = [end_row]
 
+        is_bold = (lambda i1, i2: False) if initial_board is None or not initial_numbers_bold else (lambda i1, i2 : bool(initial_board[i1][i2]))
+
         def addLayerString(i0: int) -> None:
             for i in range(i0, i0 + box_shape[0]):
                 s_lst = ["┆ "]
                 for j0 in range(0, board_side_len, box_shape[1]):
-                    is_bold = lambda j : initial_numbers_bold and self.initial_board[i][j]
-                    s_lst.append("  ".join([f"{getNumString(board[i][j], is_bold=is_bold(j))}" for j in range(j0, j0 + box_shape[1])]))
+                    
+                    s_lst.append("  ".join([f"{getNumString(board[i][j], is_bold=is_bold(i, j))}" for j in range(j0, j0 + box_shape[1])]))
                     s_lst.append(" │ ")
                 s_lst.pop()
                 s_lst.append(" ┆")
@@ -431,7 +461,7 @@ class Sudoku(object):
         return "\n".join(row_lst)
 
     def getInitialBoardPrintString(self, initial_numbers_bold: bool=False) -> None:
-        return self.getBoardPrintString(self.initial_board, self.box_shape, initial_numbers_bold=initial_numbers_bold)
+        return self.getBoardPrintString(self.initial_board, self.box_shape, initial_numbers_bold=initial_numbers_bold, initial_board=self.initial_board)
 
     def __str__(self) -> str:
         return self.getInitialBoardPrintString(initial_numbers_bold=True)
@@ -732,7 +762,7 @@ def main() -> None:
     for sol in sudoku.solutionsGenerator():
         sol_cnt += 1
         print(f"Solution {sol_cnt}")
-        print(sudoku.getBoardPrintString(sol, sudoku.box_shape, initial_numbers_bold=True))
+        print(sudoku.getBoardPrintString(sol, sudoku.box_shape, initial_numbers_bold=True, initial_board=sudoku.initial_board))
         print(f"solution is {'' if sudoku.checkSolutionValid(sol) else 'in'}valid")
         print(f"total search time before finding solution {sol_cnt} = {(time.time() - since):.4f} seconds")
     t = (time.time() - since)
