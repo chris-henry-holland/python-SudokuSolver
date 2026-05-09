@@ -77,7 +77,7 @@ class Sudoku(object):
                     of the correct type (indexable, indexable and
                     integer types respectively) or box_shape or
                     its components are not of the correct type
-                    (indexable or integer types respectively)/
+                    (indexable or integer types respectively).
             ValueError: Raised if the dimensions of initial_board
                     or box_shape are incorrect, if the dimensions
                     of initial_board are incompatible with box_shape,
@@ -418,10 +418,98 @@ class Sudoku(object):
         box_shape: tuple[int, int],
         initial_numbers_bold: bool=False,
         initial_board: Optional[list[list[int]]]=None,
+        check_box_shape_and_board_validity: bool=True,
     ) -> str:
-        
+        """
+        Static method creating a string representing a given Sudoku with
+        formatting (including aligning columns, adding a border, adding
+        dividing lines between boxes and the option of the numbers set in
+        the initial Sudoku board being marked in bold), intended for use
+        in printing to console. Unset elements are left as an empty space.
 
-        board_side_len = box_shape[0] * box_shape[1]
+        Examples of the type of formatting produced when printing to
+        console are given in the Examples section (note that bold cannot
+        be demonstrated here).
+
+        Args:
+            board (list[list[int]]): A list of lists of integers,
+                    representing the values in the Sudoku board on which
+                    the returned string is to be based, where the value
+                    0 is used to denote an element that is not set 
+                    (represented in the string as an empty space).
+            box_shape (tuple[int, int]): 2-tuple of strictly
+                    positive integers specifying the shape of the
+                    Sudoku boxes of the Sudoku represented by board,
+                    where index 0 and 1 represent the number of rows
+                    and columns respectively of the grid that appear
+                    in each box.
+            initial_numbers_bold (bool, optional): If True, then the
+                    initially set elements of board (as identified by
+                    if given, the argument initial_board) are marked as
+                    bold in the returned string, if False then none of
+                    the elements are marked as bold.
+                Default: False
+            initial_board (Optional[list[list[int]]], optional): If given,
+                    a list of lists of integers, representing the values
+                    in the initial Sudoku board which the argument board
+                    is based (i.e. with the same dimensions but with all,
+                    none or some of the unset entries in initial_board
+                    being set in board). This is only used in the case that
+                    the argument initial_numbers_bold to identify the
+                    initially set elements. If not given (or given as None),
+                    none of the elements are marked in bold in the returned
+                    string regardless of the argument initial_numbers_bold.
+                Default: None
+            check_box_shape_and_board_validity (bool, optional): If True,
+                    then the arguments box_shape and board checked as to
+                    the validity of their format and their are consistent
+                    with each other, with an invalid result giving rise
+                    to the appropriate exception being raised. If False, then
+                    this check is skipped (this option being available
+                    so as to avoid unnecessarily checking already checked
+                    or known valid inputs).
+                Default: True
+
+        Returns:
+            str: String representing the given Sudoku board with formatting,
+                    suitable for printing to console.
+
+        Example:
+        TODO
+        >>> print()
+         -----------------------------
+        ┆ 7  8    │ 4       │ 1  2    ┆
+        ┆ 6       │    7  5 │       9 ┆
+        ┆         │ 6     1 │    7  8 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆       7 │    4    │ 2  6    ┆
+        ┆       1 │    5    │ 9  3    ┆
+        ┆ 9     4 │    6    │       5 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆    7    │ 3       │    1  2 ┆
+        ┆ 1  2    │       7 │ 4       ┆
+        ┆    4  9 │ 2     6 │       7 ┆
+         -----------------------------
+        """
+
+        if check_box_shape_and_board_validity:
+            Sudoku.checkBoxShapeValid(box_shape, box_shape_name="box shape")
+            board_side_len = box_shape[0] * box_shape[1]
+            Sudoku.checkBoardFormatValid(
+                board,
+                board_side_length=board_side_len,
+                board_name="board",
+            )
+            if initial_numbers_bold and initial_board is not None:
+                Sudoku.checkBoardFormatValid(
+                    initial_board,
+                    board_side_length=board_side_len,
+                    board_name="initial board",
+                )
+        else:
+            board_side_len = box_shape[0] * box_shape[1]
+
+        
         max_n_dig = len(str(board_side_len))
 
         def getNumString(num: int, is_bold: bool=False) -> str:
@@ -460,14 +548,70 @@ class Sudoku(object):
         row_lst.append(end_row)
         return "\n".join(row_lst)
 
-    def getInitialBoardPrintString(self, initial_numbers_bold: bool=False) -> None:
-        return self.getBoardPrintString(self.initial_board, self.box_shape, initial_numbers_bold=initial_numbers_bold, initial_board=self.initial_board)
+    def getInitialBoardPrintString(
+        self,
+        initial_numbers_bold: bool=False,
+    ) -> None:
+        """
+        Creates a string representing the initial board of this Sudoku
+        with formatting (including aligning columns, adding a border,
+        adding dividing lines between boxes and the option of the numbers
+        set in the initial Sudoku board being marked in bold), intended
+        for use in printing to console. Unset elements are left as an
+        empty space.
+
+        For examples of the appearance of the formatted string when
+        printed to console, see the documentation of the static method
+        getBoardPrintString().
+
+        Args:
+            initial_numbers_bold (bool, optional): If True, then the
+                    initially set elements of board (in this case,
+                    all set elements) are marked as bold in the returned
+                    string, if False then none of the elements are marked
+                    as bold.
+                Default: False
+
+        Returns:
+            str: String representing the given initial board of this Sudoku
+                    with formatting suitable for printing to console.
+        """
+        return self.getBoardPrintString(
+            self.initial_board,
+            self.box_shape,
+            initial_numbers_bold=initial_numbers_bold,
+            initial_board=self.initial_board,
+            check_box_shape_and_board_validity=False,
+        )
 
     def __str__(self) -> str:
+        """
+        Returns a formatted string representing the initial Sudoku
+        board represented by this object.
+        """
         return self.getInitialBoardPrintString(initial_numbers_bold=True)
 
     @classmethod
     def loadSudokuFromCSV(cls, filename_in: str) -> Sudoku:
+        """
+        Class method for loading a Sudoku from a .csv file.
+        
+        The contents of a .csv file representing a Sudoku should
+        be as follows:
+        TODO
+
+        Args:
+            filename_in (str): _description_
+
+        Raises:
+            TypeError: _description_
+            ValueError: _description_
+            FileNotFoundError: _description_
+            ValueError: _description_
+
+        Returns:
+            Sudoku: _description_
+        """
         if not isinstance(filename_in, str):
             raise TypeError("filename_in must be a string")
         filename_in = filename_in.strip()
@@ -762,7 +906,15 @@ def main() -> None:
     for sol in sudoku.solutionsGenerator():
         sol_cnt += 1
         print(f"Solution {sol_cnt}")
-        print(sudoku.getBoardPrintString(sol, sudoku.box_shape, initial_numbers_bold=True, initial_board=sudoku.initial_board))
+        print(
+            sudoku.getBoardPrintString(
+                sol,
+                sudoku.box_shape,
+                initial_numbers_bold=True,
+                initial_board=sudoku.initial_board,
+                check_box_shape_and_board_validity=False,
+            )
+        )
         print(f"solution is {'' if sudoku.checkSolutionValid(sol) else 'in'}valid")
         print(f"total search time before finding solution {sol_cnt} = {(time.time() - since):.4f} seconds")
     t = (time.time() - since)
