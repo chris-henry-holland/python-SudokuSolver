@@ -14,17 +14,16 @@ import os
 import sys
 import time
 
-#from collections import deque
 import numpy as np
 from sortedcontainers import SortedDict
 
 
 class Sudoku(object):
     """
-    Class whose instances represent specific Sudoku puzzles
-    with boxes of arbitrary dimensions, including a method
-    to find all possible solutions (if any) to the represented
-    Sudoku.
+    Class whose instances each represent a specific traditional
+    Sudoku puzzle with boxes of arbitrary dimensions, including
+    a method to find all possible solutions (if any) to the
+    represented Sudoku.
 
     Attributes:
         object (_type_): _description_
@@ -294,13 +293,6 @@ class Sudoku(object):
         that are to be determined when solving the puzzle) equal to 0.
         """
         return self._initial_board
-    
-    def _createIndexArray(self) -> np.ndarray:
-        enc_idx_arr = np.zeros((self.board_side_length, self.board_side_length), dtype=np.ubyte)
-        for i1 in range(self.board_side_length):
-            for i2 in range(self.board_side_length):
-                enc_idx_arr[i1, i2] = self.encodePositionIndices(i1, i2)
-        return enc_idx_arr
 
     @staticmethod
     def checkBoardForImmediateConflicts(
@@ -534,7 +526,6 @@ class Sudoku(object):
             for i in range(i0, i0 + box_shape[0]):
                 s_lst = ["┆ "]
                 for j0 in range(0, board_side_len, box_shape[1]):
-                    
                     s_lst.append("  ".join([f"{getNumString(board[i][j], is_bold=is_bold(i, j))}" for j in range(j0, j0 + box_shape[1])]))
                     s_lst.append(" │ ")
                 s_lst.pop()
@@ -694,48 +685,90 @@ class Sudoku(object):
                 board.append([int(num_str.strip()) for num_str in row])
         return Sudoku(board, box_shape)
     
-    def encodePositionIndices(self, idx1: int, idx2: int) -> int:
+    def encodePosition(self, pos: tuple[int, int]) -> int:
         """
         Finds the standardised encoding as a single integer of the
-        position indices of an element of the Sudoku board as a
-        single integer.
+        position of an element of the Sudoku board as a single
+        non-negative integer strictly less than the attribute
+        board_side_length squared.
+
+        For a given element of a Sudoku board, the position
+        of the element is a 2-tuple of non-negative integers, both
+        strictly less than the side length of the Sudoku board, where
+        index 0 specifies the 0-indexed row of the element (with the
+        top row taking index 0 and all other rows having an index
+        exactly one greater than the row directly above) and index 1
+        specifies the 0-indexed column of the element (with the
+        leftmost column taking index 0 and all other columns having
+        and index exactly one greater than the column directly to
+        its left).
+
+        The standardised encoding maps each valid position on the
+        Sudoku board onto an integer distinct from that of every
+        other valid position, with each non-negative integer strictly
+        less than board_side_length squared equal to the encoding of
+        exactly one valid position on the Sudoku board. This enables
+        unambiguous decoding (performed by the method decodePostion()).
 
         Args:
-            idx1 (int): Non-negative integer giving the 0-indexed
-                    index of the row of the Sudoku board element
-                    being encoded.
-            idx2 (int): Non-negative integer giving the 0-indexed
-                    index of the column of the Sudoku board element
-                    being encoded.
+            pos (tuple[int, int]): 2-tuple of non-negative integers,
+                    both strictly less than board_side_length, giving
+                    the position on the Sudoku board to be encoded.
+
+        Raises:
+            ValueError: Raised if either element of pos is negative
+                    or is greater than or equal to the attribute
+                    board_side_length.
 
         Returns:
             int: The standardised encoding of the element of the
-                    Sudoku board with 0-indexed row index idx1 and
-                    0-indexed column index idx2.
+                    Sudoku board with position pos.
         """
-        return idx1 * self.board_side_length + idx2
+        for idx in pos:
+            if idx < 0 or idx >= self.board_side_length:
+                raise ValueError("Both elements of pos must be between "
+                            f"0 and {self.board_side_length - 1} inclusive")
+        return pos[0] * self.board_side_length + pos[1]
     
-    def decodePositionIndices(self, enc_idx: int) -> tuple[int, int]:
+    def decodePosition(self, pos_enc: int) -> tuple[int, int]:
         """
-        Finds the 0-indexed position indices of the element of the
-        Sudoku board whose standardised encoding is the non-negative
-        integer enc_idx.
+        Finds the position of the element of the Sudoku board whose
+        standardised encoding is the non-negative integer enc_idx.
+
+        For more information regarding the position of an element on
+        the Sudoku board and the standardised encoding, see the
+        documentation of the method encodePosition().
 
         Args:
-            enc_idx (int): Non-negative integer giving the standardised
-                    encoding of the element of the Sudoku whose 0-indexed
-                    position indices are to be found
+            pos_enc (int): Non-negative integer strictly less than
+                    the attribute board_side_length squared giving the
+                    standardised encoding of the element of the Sudoku
+                    whose position is to be returned.
+        
+        Raises:
+            ValueError: Raised if enc_pos is negative or is greater
+                    than or equal to the attribute board_side_length
+                    squared.
                     
-
         Returns:
             tuple[int, int]: 2-tuple of non-negative integers giving
-                    the 0-indexed row and column indices respectively
-                    of the element of the Sudoku board whose standardised
-                    encoding is enc_idx.
+                    the position of the element of the Sudoku board
+                    whose standardised encoding in enc_pos.
         """
-        return divmod(enc_idx, self.board_side_length)
+        if pos_enc < 0 or pos_enc >= self.board_side_length ** 2:
+            raise ValueError("pos_enc must be between 0 and "
+                            f"{self.board_side_length ** 2 - 1} includisve")
+        return divmod(pos_enc, self.board_side_length)
 
-    def _createInitialStateArray(self) -> tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]:
+    def createInitialStateArray(
+        self,
+    ) -> tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]:
+        """
+
+
+        Returns:
+            tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]: _description_
+        """
         num_mx = self.board_side_length
         dtype = np.uint
         if num_mx <= 16:
@@ -763,16 +796,22 @@ class Sudoku(object):
                     num_bm = dtype(1 << (self.initial_board[i1][i2] - 1))
                     num_bm_complement = ~num_bm
                     curr_state_bm[i1, i2] = num_bm
-                    region_inds_lst = self.getRegionIndicesFromPosition(i1, i2)
+                    region_inds_lst = self.getRegionIndicesFromPosition((i1, i2))
                     #num_bm_complement = dtype(~(1 << self.initial_board[i1, i2]))
                     for region_typ_idx, region_inds in enumerate(region_inds_lst):
-                        region_available_nums_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_nums_bm[region_typ_idx, region_inds[0]], num_bm_complement)
-                        region_available_spaces_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_spaces_bm[region_typ_idx, region_inds[0]], ~dtype(1 << region_inds[1]))
+                        region_available_nums_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                            region_available_nums_bm[region_typ_idx, region_inds[0]],
+                            num_bm_complement,
+                        )
+                        region_available_spaces_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                            region_available_spaces_bm[region_typ_idx, region_inds[0]],
+                            ~dtype(1 << region_inds[1]),
+                        )
                     #unset_opts[0, 0, row_idx] -= 
                     #n_set += 1
                     continue
                 opts_count_dict.setdefault(num_mx, set())
-                opts_count_dict[num_mx].add(np.ubyte(self.encodePositionIndices(i1, i2)))
+                opts_count_dict[num_mx].add(np.ubyte(self.encodePosition((i1, i2))))
         return (curr_state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm)
     
     @staticmethod
@@ -1005,9 +1044,9 @@ class Sudoku(object):
         the regions of that type region_ext_idx.
 
         The region type indices correspond to the following region types:
-            0- corresponds to a row
-            1- corresponds to a column
-            2- corresponds to a box
+            0- corresponds to row regions
+            1- corresponds to column regions
+            2- corresponds to box regions
 
         Args:
             region_typ_idx (int): Integer between 0 and 2 inclusive
@@ -1053,17 +1092,52 @@ class Sudoku(object):
         region_inds: tuple[int, int],
     ) -> tuple[int, int]:
         """
-        
+        For a given Sudoku region type (row, column or box based on
+        region_typ_idx), converts the region indices of an element
+        of the Sudoku board to its position.
+
+        For a given element of a Sudoku board, the region indices of
+        the element with respect to a given region type (row, column
+        or box) is a 2-tuple of non-negative integers, both strictly
+        less than the side length of the Sudoku board, with the index 0
+        specifying (0-indexed) the standardised index of the region of
+        the given region type containing the element, and index 1
+        specifying the (0-indexed) standardised index of that element
+        with respect to that region.
+
+        For a given element of a Sudoku board, the position
+        of the element is a 2-tuple of non-negative integers, both
+        strictly less than the side length of the Sudoku board, where
+        index 0 specifies the 0-indexed row of the element (with the
+        top row taking index 0 and all other rows having an index
+        exactly one greater than the row directly above) and index 1
+        specifies the 0-indexed column of the element (with the
+        leftmost column taking index 0 and all other columns having
+        and index exactly one greater than the column directly to
+        its left).
 
         Args:
-            region_typ_idx (int): _description_
-            region_inds (tuple[int, int]): _description_
+            region_typ_idx (int): Integer between 0 and 2 inclusive
+                    indicating the type of region the slice should
+                    represent, with 0 corresponding to row, 1 to
+                    column and 2 to box.
+            region_inds (tuple[int, int]): 2-tuple of non-negative
+                    integers, both strictly less than the attribute
+                    box_side_length, giving the region indices of the
+                    element whose position is to be returned.
 
         Raises:
-            ValueError: _description_
+            ValueError: Raised if either element of region_inds is
+                    negative or is greater than or equal to the
+                    attribute box_side_length.
 
         Returns:
-            tuple[int, int]: _description_
+            tuple[int, int]: 2-tuple of non-negative integers
+                    strictly less than the attribute box_side_length
+                    giving the position of the element of the Sudoku
+                    board whose region indices with respect to the
+                    region type corresponding to region_typ_idx
+                    are region_inds.
         """
         for region_idx in region_inds:
             if not 0 <= region_idx < self.board_side_length:
@@ -1090,24 +1164,182 @@ class Sudoku(object):
         region_typ_idx: int,
         region_inds: tuple[int, int],
     ) -> int:
-        return self.encodePositionIndices(*self.regionIndices2Position(region_typ_idx, region_inds))
+        """
+        For a given Sudoku region type (row, column or box based on
+        region_typ_idx), converts the region indices of to encoded
+        position.
+
+        For a given element of a Sudoku board, the region indices of
+        the element with respect to a given region type (row, column
+        or box) is a 2-tuple of non-negative integers, both strictly
+        less than the side length of the Sudoku board, with the index 0
+        specifying (0-indexed) the standardised index of the region of
+        the given region type containing the element, and index 1
+        specifying the (0-indexed) standardised index of that element
+        with respect to that region.
+
+        For a given element of a Sudoku board, the position
+        of the element is a 2-tuple of non-negative integers, both
+        strictly less than the side length of the Sudoku board, where
+        index 0 specifies the 0-indexed row of the element (with the
+        top row taking index 0 and all other rows having an index
+        exactly one greater than the row directly above) and index 1
+        specifies the 0-indexed column of the element (with the
+        leftmost column taking index 0 and all other columns having
+        and index exactly one greater than the column directly to
+        its left).
+        The encoded position for a given element is calculated
+        by uniquely encoding the position to a non-negative integer
+        that is strictly less than the attribute board_side_length
+        squared using the method encodePosition().
+
+        Args:
+            region_typ_idx (int): Integer between 0 and 2 inclusive
+                    indicating the type of region the slice should
+                    represent, with 0 corresponding to row, 1 to
+                    column and 2 to box.
+            region_inds (tuple[int, int]): 2-tuple of non-negative
+                    integers, both strictly less than the attribute
+                    box_side_length, giving the region indices of the
+                    element whose encoded position is to be
+                    returned.
+
+        Raises:
+            ValueError: Raised if either element of region_inds is
+                    negative or is greater than or equal to the
+                    attribute box_side_length.
+
+        Returns:
+            int: Non-negative integer strictly less than the square
+                    of box_side_length giving the encoded position
+                    of the element of the Sudoku board whose region
+                    indices with respect to the region type
+                    corresponding to region_typ_idx are region_inds.
+        """
+        return self.encodePosition(
+            self.regionIndices2Position(region_typ_idx, region_inds)
+        )
 
     def getRegionIndicesFromPosition(
         self,
-        idx1: int,
-        idx2: int,
+        pos: tuple[int, int],
     ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
-        i1, j1 = divmod(idx1, self.box_shape[0])
-        i2, j2 = divmod(idx2, self.box_shape[1])
+        """
+        For each Sudoku region type (row, column and box), calculates
+        the region indices of the element of the Sudoku board at
+        position pos. These are returned in order row, column, box
+        region indices.
+
+        For a given element of a Sudoku board, the position
+        of the element is a 2-tuple of non-negative integers, both
+        strictly less than the side length of the Sudoku board, where
+        index 0 specifies the 0-indexed row of the element (with the
+        top row taking index 0 and all other rows having an index
+        exactly one greater than the row directly above) and index 1
+        specifies the 0-indexed column of the element (with the
+        leftmost column taking index 0 and all other columns having
+        and index exactly one greater than the column directly to
+        its left).
+
+        For a given element of a Sudoku board, the region indices of
+        the element with respect to a given region type (row, column
+        or box) is a 2-tuple of non-negative integers, both strictly
+        less than the side length of the Sudoku board, with the index 0
+        specifying (0-indexed) the standardised index of the region of
+        the given region type containing the element, and index 1
+        specifying the (0-indexed) standardised index of that element
+        with respect to that region.
+
+        Args:
+            pos (tuple[int, int]): 2-tuple of non-negative integers,
+                    both strictly less than board_side_length, giving
+                    the position on the Sudoku board whose region
+                    indices for the different region types are to
+                    be calculated.
+
+        Raises:
+            ValueError: Raised if either element of pos is negative
+                    or is greater than or equal to the attribute
+                    board_side_length.
+
+        Returns:
+            tuple[tuple[int, int], tuple[int, int], tuple[int, int]]: 3-tuple
+                    of 2-tuples of non-negative integers strictly less than
+                    board_side_length, with each 2-tuple giving the region
+                    indices of the Sudoku board element at position pos for
+                    a different region type, with the 2-tuple index to
+                    region type correspondence being:
+                      0- row
+                      1- column
+                      2- box
+        """
+        for idx in pos:
+            if not 0 <= idx < self.board_side_length:
+                raise ValueError("Both elements of pos must be between 0 and "
+                                f"{self.board_side_length - 1} inclusive")
+        i1, j1 = divmod(pos[0], self.box_shape[0])
+        i2, j2 = divmod(pos[1], self.box_shape[1])
 
         #box_idx = (idx1 // self.box_shape[0]) * self.box_shape[0] + (idx2 // self.box_shape[1])
-        return ((idx1, idx2), (idx2, idx1), (i1 * self.box_shape[0] + i2, j1 * self.box_shape[1] + j2))
+        return ((pos[0], pos[1]), (pos[1], pos[0]), (i1 * self.box_shape[0] + i2, j1 * self.box_shape[1] + j2))
 
     def getRegionIndicesFromEncodedPosition(
         self,
-        enc_idx: int,
+        pos_enc: int,
     ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
-        return self.getRegionIndicesFromPosition(*self.decodePositionIndices(enc_idx))
+        """
+        For each Sudoku region type (row, column and box), calculates
+        the region indices of the element of the Sudoku board with
+        encoded position pos_enc. These are returned in order row,
+        column, box region indices.
+
+        For a given element of a Sudoku board, the position
+        of the element is a 2-tuple of non-negative integers, both
+        strictly less than the side length of the Sudoku board, where
+        index 0 specifies the 0-indexed row of the element (with the
+        top row taking index 0 and all other rows having an index
+        exactly one greater than the row directly above) and index 1
+        specifies the 0-indexed column of the element (with the
+        leftmost column taking index 0 and all other columns having
+        and index exactly one greater than the column directly to
+        its left).
+        The encoded position for a given element is calculated
+        by uniquely encoding the position to a non-negative integer
+        that is strictly less than the attribute board_side_length
+        squared using the method encodePosition().
+
+        For a given element of a Sudoku board, the region indices of
+        the element with respect to a given region type (row, column
+        or box) is a 2-tuple of non-negative integers, both strictly
+        less than the side length of the Sudoku board, with the index 0
+        specifying (0-indexed) the standardised index of the region of
+        the given region type containing the element, and index 1
+        specifying the (0-indexed) standardised index of that element
+        with respect to that region.
+
+        Args:
+            pos_enc (int): Non-negative integer strictly less than
+                    the attribute board_side_length squared giving the
+                    standardised encoding of the element of the Sudoku
+                    board whose region indices for the different region
+                    types are to be calculated.
+
+        Raises:
+            ValueError: Raised if pos_enc is negative or is greater than
+                    or equal to board_side_length squared.
+
+        Returns:
+            tuple[tuple[int, int], tuple[int, int], tuple[int, int]]: 3-tuple
+                    of 2-tuples of non-negative integers strictly less than
+                    board_side_length, with each 2-tuple giving the region
+                    indices of the Sudoku board element with encoded position
+                    pos_enc for a different region type, with the 2-tuple
+                    index to region type correspondence being:
+                      0- row
+                      1- column
+                      2- box
+        """
+        return self.getRegionIndicesFromPosition(self.decodePosition(pos_enc))
 
     def simplifyState(
         self,
@@ -1117,7 +1349,19 @@ class Sudoku(object):
         region_available_spaces_bm: np.ndarray,
         enc_inds_changed: set[int],
     ) -> bool:
-        
+        """
+        ***HERE***
+
+        Args:
+            state_bm (np.ndarray): _description_
+            opts_count_dict (SortedDict): _description_
+            region_available_nums_bm (np.ndarray): _description_
+            region_available_spaces_bm (np.ndarray): _description_
+            enc_inds_changed (set[int]): _description_
+
+        Returns:
+            bool: _description_
+        """
         dtype = state_bm.dtype.type
         if dtype == object: dtype = int
 
@@ -1128,10 +1372,10 @@ class Sudoku(object):
             enc_idx = enc_inds_stk.pop()
             enc_inds_in_stk.remove(enc_idx)
             
-            idx1, idx2 = self.decodePositionIndices(enc_idx)
+            pos = self.decodePosition(enc_idx)
             
-            region_inds_lst = self.getRegionIndicesFromPosition(idx1, idx2)
-            bm0 = state_bm[idx1, idx2]
+            region_inds_lst = self.getRegionIndicesFromPosition(pos)
+            bm0 = state_bm[*pos]
             chk_bm0 = dtype((1 << num_mx) - 1) ^ bm0
             
             # Checking for elements that share a region with the changed element that
@@ -1148,7 +1392,7 @@ class Sudoku(object):
                     slc_idx_lst = np.where(np.bitwise_and(slc_arr, bm2))[0]
                     if len(slc_idx_lst) != 1: continue
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], slc_idx_lst[0]))
-                    enc_idx2 = self.encodePositionIndices(*inds2)
+                    enc_idx2 = self.encodePosition(inds2)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt <= 1:
                         return False
@@ -1169,7 +1413,7 @@ class Sudoku(object):
                 region_int_idx_set = set(np.where(np.bitwise_and(slc_arr, bm0))[0]) - {region_inds[1]}
                 for region_int_idx in region_int_idx_set:
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], region_int_idx))
-                    enc_idx2 = self.encodePositionIndices(*inds2)
+                    enc_idx2 = self.encodePosition(inds2)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt == 1: return False
                     state_bm[*inds2] = np.bitwise_and(state_bm[*inds2], ~bm0)
@@ -1182,14 +1426,18 @@ class Sudoku(object):
                     if enc_idx2 in enc_inds_in_stk: continue
                     enc_inds_in_stk.add(enc_idx2)
                     enc_inds_stk.append(enc_idx2)
-                region_available_nums_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_nums_bm[region_typ_idx, region_inds[0]], bm0_compl)
-                region_available_spaces_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_spaces_bm[region_typ_idx, region_inds[0]], ~dtype(1 << region_inds[1]))
+                region_available_nums_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                    region_available_nums_bm[region_typ_idx, region_inds[0]],
+                    bm0_compl,
+                )
+                region_available_spaces_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                    region_available_spaces_bm[region_typ_idx, region_inds[0]],
+                    ~dtype(1 << region_inds[1]),
+                )
         return True
 
-    
-
     def solutionsGenerator(self) -> Generator[list[list[int]], None, None]:
-        state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self._createInitialStateArray()
+        state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateArray()
         enc_inds_changed = set(range(self.board_side_length * self.board_side_length))
         for enc_inds in opts_count_dict.values():
             enc_inds_changed -= enc_inds
@@ -1216,15 +1464,15 @@ class Sudoku(object):
             
             n_opts, enc_inds = opts_count_dict.peekitem(0)
             enc_idx = next(iter(enc_inds))
-            idx1, idx2 = self.decodePositionIndices(enc_idx)
-            for j in self.bitmaskIndicesGenerator(state_bm[idx1, idx2]):
+            pos = self.decodePosition(enc_idx)
+            for j in self.bitmaskIndicesGenerator(state_bm[*pos]):
                 state_bm2 = copy.deepcopy(state_bm)
                 num_bm = dtype(1 << j)
                 num_bm_compl = ~num_bm
-                state_bm2[idx1, idx2] = num_bm
+                state_bm2[*pos] = num_bm
                 opts_count_dict2 = SortedDict({x: set(y) for x, y in opts_count_dict.items()})
                 opts_count_dict2[n_opts].remove(enc_idx)
-                region_inds_lst = self.getRegionIndicesFromPosition(idx1, idx2)
+                region_inds_lst = self.getRegionIndicesFromPosition(pos)
                 region_available_nums_bm2 = copy.deepcopy(region_available_nums_bm)
                 region_available_spaces_bm2 = copy.deepcopy(region_available_spaces_bm)
                 for region_typ_idx, region_inds in enumerate(region_inds_lst):
