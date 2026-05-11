@@ -1347,30 +1347,99 @@ class Sudoku(object):
         opts_count_dict: SortedDict,
         region_available_nums_bm: np.ndarray,
         region_available_spaces_bm: np.ndarray,
-        enc_inds_changed: set[int],
+        pos_enc_changed: set[int],
     ) -> bool:
         """
-        ***HERE***
+        For a given Sudoku board state following changes to
+        given board elements, uses logic to iteratively simplify
+        the board states by removing options that are now impossible
+        and recognising when elements have only a single possible
+        option. Additionally, recognises when a direct contradiction
+        is identified (either a set of different numbers are forced
+        to collectively inhabit a smaller number of spaces, or
+        there is no place in a region of the Sudoku that can take
+        a given value).
+
+        At present, the simplifications take two forms:
+         1) For Sudoku regions (rows, columns, boxes), identifies
+            when a number is only an option for a single element
+            in that region, thus forcing that element to take that
+            number value.
+         2) When a Sudoku board element has only one option as to its
+            value, leading to that value being excluded as an option
+            for any other element in the regions (i.e. the row, column
+            and box) to which the element belongs.
+        
+        Note that the simplification takes the form of direct
+        modification of the input arguments state_bm, opts_count_dict,
+        region_available_nums_bm and/or region_available_spaces_bm.
+        
+        Increasing the scope of simplifications is a target for future
+        optimisation, for example identifying naked and/or hidden
+        pairs and triples.
 
         Args:
-            state_bm (np.ndarray): _description_
-            opts_count_dict (SortedDict): _description_
-            region_available_nums_bm (np.ndarray): _description_
-            region_available_spaces_bm (np.ndarray): _description_
-            enc_inds_changed (set[int]): _description_
+            state_bm (np.ndarray): 2-dimensional square numpy array
+                    of unsigned ints (np.uint) with side length equal
+                    to the attribute board_side_length, where the
+                    integers correspond to a bitmask, where the
+                    0-indexed i:th bit is set (i.e. the (i + 1):th
+                    rightmost bit in the binary representation of the
+                    bitmask integer is 1) if and only if the value
+                    (i + 1) has not been excluded as a potential value
+                    the corresponding element of the Sudoku might take.
+            opts_count_dict (SortedDict): Sorted dictionary whose keys
+                    are integers strictly greater than 1, representing
+                    the number of non-excluded values the Sudoku elements
+                    with more than one such non-excluded values have, with
+                    the corresponding value being a set of integers
+                    comprising the encoded positions that have that
+                    number of non-excluded values.
+            region_available_nums_bm (np.ndarray): 2-dimensional numpy
+                    array of unsigned ints (np.uint) with dimension 0
+                    of length 3 and dimension 1 of length equal to the
+                    attribute board_side_length. The element with index
+                    (idx1, idx2) gives a bitmask representing the values
+                    not yet set in the region of type idx1 (where 0 is
+                    a row, 1 is a column, 2 is a box), with region index
+                    idx2, where a number i is not one of the set values
+                    in that region if and only if the (i - 1):th bit in
+                    the bitmask is set (i.e. the i:th rightmost digit
+                    in the binary representation of the bitmask integer
+                    is 1).
+            region_available_spaces_bm (np.ndarray): 2-dimensional numpy
+                    array of unsigned ints (np.uint) with dimension 0
+                    of length 3 and dimension 1 of length equal to the
+                    attribute board_side_length. The element with index
+                    (idx1, idx2) gives a bitmask signifying which of the
+                    elements in the region of type idx1 (where 0 is a row,
+                    1 is a column, 2 is a box) with region index idx2 that
+                    have not yet been set to a value (i.e. have more than one
+                    potential value). For an element in this region whose
+                    index within that region is i, that element's value has
+                    not yet been set to a value if and only if the
+                    (i - 1):th bit in the bitmask is set (i.e. the i:th
+                    rightmost digit in the binary representation of the
+                    bitmask integer is 1).
+            pos_enc_changed (set[int]): Set of integers representing the
+                    encoded positions whose bitmasks in state_bm have
+                    been altered since the previous application of this
+                    method (or, for the first use of this method, the
+                    encoded positions of the initially set elements).
 
         Returns:
-            bool: _description_
+            bool: True if no direct contradiction has been identified in
+                    the Sudoku during the simplification, False otherwise.
         """
         dtype = state_bm.dtype.type
         if dtype == object: dtype = int
 
         num_mx = self.board_side_length
-        enc_inds_in_stk = set(enc_inds_changed)
-        enc_inds_stk = list(enc_inds_changed)
-        while enc_inds_stk:
-            enc_idx = enc_inds_stk.pop()
-            enc_inds_in_stk.remove(enc_idx)
+        pos_enc_in_stk = set(pos_enc_changed)
+        pos_enc_stk = list(pos_enc_changed)
+        while pos_enc_stk:
+            enc_idx = pos_enc_stk.pop()
+            pos_enc_in_stk.remove(enc_idx)
             
             pos = self.decodePosition(enc_idx)
             
@@ -1399,9 +1468,9 @@ class Sudoku(object):
                     state_bm[*inds2] = bm2
                     opts_count_dict[opts_cnt].remove(enc_idx2)
                     if not opts_count_dict[opts_cnt]: opts_count_dict.pop(opts_cnt)
-                    if enc_idx2 in enc_inds_in_stk: continue
-                    enc_inds_in_stk.add(enc_idx2)
-                    enc_inds_stk.append(enc_idx2)
+                    if enc_idx2 in pos_enc_in_stk: continue
+                    pos_enc_in_stk.add(enc_idx2)
+                    pos_enc_stk.append(enc_idx2)
             
             if np.bitwise_count(bm0) != 1: continue
 
@@ -1423,9 +1492,9 @@ class Sudoku(object):
                     if opts_cnt2 > 1:
                         opts_count_dict.setdefault(opts_cnt2, set())
                         opts_count_dict[opts_cnt2].add(enc_idx2)
-                    if enc_idx2 in enc_inds_in_stk: continue
-                    enc_inds_in_stk.add(enc_idx2)
-                    enc_inds_stk.append(enc_idx2)
+                    if enc_idx2 in pos_enc_in_stk: continue
+                    pos_enc_in_stk.add(enc_idx2)
+                    pos_enc_stk.append(enc_idx2)
                 region_available_nums_bm[region_typ_idx, region_inds[0]] = np.bitwise_and(
                     region_available_nums_bm[region_typ_idx, region_inds[0]],
                     bm0_compl,
@@ -1438,15 +1507,15 @@ class Sudoku(object):
 
     def solutionsGenerator(self) -> Generator[list[list[int]], None, None]:
         state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateArray()
-        enc_inds_changed = set(range(self.board_side_length * self.board_side_length))
-        for enc_inds in opts_count_dict.values():
-            enc_inds_changed -= enc_inds
+        pos_enc_changed = set(range(self.board_side_length * self.board_side_length))
+        for pos_enc in opts_count_dict.values():
+            pos_enc_changed -= pos_enc
         self.simplifyState(
             state_bm,
             opts_count_dict,
             region_available_nums_bm,
             region_available_spaces_bm,
-            enc_inds_changed,
+            pos_enc_changed,
         )
 
         def recur(
@@ -1462,8 +1531,8 @@ class Sudoku(object):
             dtype = state_bm.dtype.type
             if dtype == object: dtype = int
             
-            n_opts, enc_inds = opts_count_dict.peekitem(0)
-            enc_idx = next(iter(enc_inds))
+            n_opts, pos_enc = opts_count_dict.peekitem(0)
+            enc_idx = next(iter(pos_enc))
             pos = self.decodePosition(enc_idx)
             for j in self.bitmaskIndicesGenerator(state_bm[*pos]):
                 state_bm2 = copy.deepcopy(state_bm)
@@ -1476,8 +1545,14 @@ class Sudoku(object):
                 region_available_nums_bm2 = copy.deepcopy(region_available_nums_bm)
                 region_available_spaces_bm2 = copy.deepcopy(region_available_spaces_bm)
                 for region_typ_idx, region_inds in enumerate(region_inds_lst):
-                    region_available_nums_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_nums_bm2[region_typ_idx, region_inds[0]], num_bm_compl)
-                    region_available_spaces_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_spaces_bm2[region_typ_idx, region_inds[0]], ~dtype(1 << region_inds[1]))
+                    region_available_nums_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                        region_available_nums_bm2[region_typ_idx, region_inds[0]],
+                        num_bm_compl,
+                    )
+                    region_available_spaces_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(
+                        region_available_spaces_bm2[region_typ_idx, region_inds[0]],
+                        ~dtype(1 << region_inds[1]),
+                    )
                 if not opts_count_dict2[n_opts]: opts_count_dict2.pop(n_opts)
                 if self.simplifyState(
                     state_bm2,
@@ -1486,10 +1561,20 @@ class Sudoku(object):
                     region_available_spaces_bm2,
                     {enc_idx},
                 ):
-                    yield from recur(state_bm2, opts_count_dict2, region_available_nums_bm2, region_available_spaces_bm2)
+                    yield from recur(
+                        state_bm2,
+                        opts_count_dict2,
+                        region_available_nums_bm2,
+                        region_available_spaces_bm2,
+                    )
             return
 
-        yield from recur(state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm)
+        yield from recur(
+            state_bm,
+            opts_count_dict,
+            region_available_nums_bm,
+            region_available_spaces_bm,
+        )
         return
 
 class InvalidSudokuSolution(Exception):
