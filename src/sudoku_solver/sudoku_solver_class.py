@@ -7,6 +7,7 @@ from typing import (
     Optional,
 )
 
+import argparse
 import copy
 import csv
 import os
@@ -73,7 +74,7 @@ class Sudoku(object):
 
         Raises:
             TypeError: Raised if initial_board, its components
-                    or the componenets of its components are not
+                    or the components of its components are not
                     of the correct type (indexable, indexable and
                     integer types respectively) or box_shape or
                     its components are not of the correct type
@@ -298,7 +299,7 @@ class Sudoku(object):
         enc_idx_arr = np.zeros((self.board_side_length, self.board_side_length), dtype=np.ubyte)
         for i1 in range(self.board_side_length):
             for i2 in range(self.board_side_length):
-                enc_idx_arr[i1, i2] = self.encodeIndices(i1, i2)
+                enc_idx_arr[i1, i2] = self.encodePositionIndices(i1, i2)
         return enc_idx_arr
 
     @staticmethod
@@ -594,23 +595,77 @@ class Sudoku(object):
     @classmethod
     def loadSudokuFromCSV(cls, filename_in: str) -> Sudoku:
         """
-        Class method for loading a Sudoku from a .csv file.
+        Class method for loading a Sudoku from a .csv file as a
+        Sudoku object.
         
         The contents of a .csv file representing a Sudoku should
         be as follows:
-        TODO
+          Line 1: A pair of comma separated strictly positive integers
+                giving the box shape of the Sudoku (the number of rows
+                and columns respectively in each box).
+          Subsequent lines: Comma separated non-negative integer values,
+                the lines giving the rows of the initial Sudoku board
+                in order from top to bottom and each line containing the
+                values in the corresponding Sudoku row from left to
+                right in order, with the unset elements represented
+                by 0. The number of subsequent lines and the number
+                of comma separated values in each of these lines must
+                equal the product of the two elements on line 1, with
+                no integer value in these lines exceeding this product.
+        Empty lines are ignored and lines whose first non-space
+        character is "#" are treated as comments and are so also
+        ignored.
 
         Args:
-            filename_in (str): _description_
+            filename_in (str): Relative or absolute path to the .csv
+                    file from which the Sudoku is to be loaded.
 
         Raises:
-            TypeError: _description_
-            ValueError: _description_
-            FileNotFoundError: _description_
-            ValueError: _description_
+            TypeError: Raised if filename_in is not a string or any
+                    of the comma separated values in filename_in are
+                    not integers.
+            FileNotFoundError: Raised if filename_in does not correspond
+                    to a file.
+            ValueError: Raised if the .csv file at filename_in is not
+                    a .csv file, the data in that .csv file is not
+                    in the format described above or the Sudoku board
+                    represented by the .csv files contains immediate
+                    conflicts (i.e. more than one of the same set
+                    value in a row, column or box).
 
         Returns:
-            Sudoku: _description_
+            Sudoku: Sudoku object representing the Sudoku stored in the
+                    .csv file at filename_in.
+        
+        Example:
+        
+        A .csv file containing the data:
+        >>> # Easy standard Sudoku
+            3,3
+            7,8,0,4,0,0,1,2,0
+            6,0,0,0,7,5,0,0,9
+            0,0,0,6,0,1,0,7,8
+            0,0,7,0,4,0,2,6,0
+            0,0,1,0,5,0,9,3,0
+            9,0,4,0,6,0,0,0,5
+            0,7,0,3,0,0,0,1,2
+            1,2,0,0,0,7,4,0,0
+            0,4,9,2,0,6,0,0,7
+        
+        corresponds to the initial Sudoku board:
+        >>>  -----------------------------
+            ┆ 8       │         │         ┆
+            ┆       3 │ 6       │         ┆
+            ┆    7    │    9    │ 2       ┆
+            ┆─────────┼─────────┼─────────┆
+            ┆    5    │       7 │         ┆
+            ┆         │    4  5 │ 7       ┆
+            ┆         │ 1       │    3    ┆
+            ┆─────────┼─────────┼─────────┆
+            ┆       1 │         │    6  8 ┆
+            ┆       8 │ 5       │    1    ┆
+            ┆    9    │         │ 4       ┆
+             -----------------------------
         """
         if not isinstance(filename_in, str):
             raise TypeError("filename_in must be a string")
@@ -628,7 +683,10 @@ class Sudoku(object):
             for row in it:
                 if not row or (row[0].lstrip() and row[0].lstrip()[0] == "#"): continue
                 if len(row) != 2:
-                    raise ValueError("the first non-empty row of a CSV file containing a sudoku must consist of exactly two strictly positive integers separated by a comma")
+                    raise ValueError(
+                        "the first non-empty row of a CSV file containing a Sudoku "
+                        "must consist of exactly two strictly positive integers "
+                        "separated by a comma")
                 box_shape = tuple(int(num_str.strip()) for num_str in row)
                 break
             for row in it:
@@ -636,10 +694,45 @@ class Sudoku(object):
                 board.append([int(num_str.strip()) for num_str in row])
         return Sudoku(board, box_shape)
     
-    def encodeIndices(self, idx1: int, idx2: int) -> int:
+    def encodePositionIndices(self, idx1: int, idx2: int) -> int:
+        """
+        Finds the standardised encoding as a single integer of the
+        position indices of an element of the Sudoku board as a
+        single integer.
+
+        Args:
+            idx1 (int): Non-negative integer giving the 0-indexed
+                    index of the row of the Sudoku board element
+                    being encoded.
+            idx2 (int): Non-negative integer giving the 0-indexed
+                    index of the column of the Sudoku board element
+                    being encoded.
+
+        Returns:
+            int: The standardised encoding of the element of the
+                    Sudoku board with 0-indexed row index idx1 and
+                    0-indexed column index idx2.
+        """
         return idx1 * self.board_side_length + idx2
     
-    def decodeIndices(self, enc_idx: int) -> tuple[int, int]:
+    def decodePositionIndices(self, enc_idx: int) -> tuple[int, int]:
+        """
+        Finds the 0-indexed position indices of the element of the
+        Sudoku board whose standardised encoding is the non-negative
+        integer enc_idx.
+
+        Args:
+            enc_idx (int): Non-negative integer giving the standardised
+                    encoding of the element of the Sudoku whose 0-indexed
+                    position indices are to be found
+                    
+
+        Returns:
+            tuple[int, int]: 2-tuple of non-negative integers giving
+                    the 0-indexed row and column indices respectively
+                    of the element of the Sudoku board whose standardised
+                    encoding is enc_idx.
+        """
         return divmod(enc_idx, self.board_side_length)
 
     def _createInitialStateArray(self) -> tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]:
@@ -679,15 +772,51 @@ class Sudoku(object):
                     #n_set += 1
                     continue
                 opts_count_dict.setdefault(num_mx, set())
-                opts_count_dict[num_mx].add(np.ubyte(self.encodeIndices(i1, i2)))
+                opts_count_dict[num_mx].add(np.ubyte(self.encodePositionIndices(i1, i2)))
         return (curr_state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm)
     
     @staticmethod
-    def getSmallestSetBit(bm: np.uint) -> int:
+    def getLeastSignificantSetBit(bm: np.uint) -> np.uint:
+        """
+        Static method calculated for an unsigned integer the index
+        of the smallest set bit (i.e. the smallest power of 2 whose
+        corresponding bit in the binary representation of the
+        unsigned integer is 1).
+
+        Args:
+            bm (np.uint): Unsigned integer for which the index of
+                    the least significant set bit is to be calculated.
+
+        Returns:
+            np.uint: The least significant set bit of the unsigned integer
+                    bm.
+        """
         return np.frexp(bm & (~(bm - 1)))[1] - 1
     
     @staticmethod
-    def bitmaskComponentsGenerator(bm: np.uint) -> Generator[int, None, None]:
+    def bitmaskComponentsGenerator(
+        bm: np.uint,
+    ) -> Generator[np.uint, None, None]:
+        """
+        Generator iterating over the components of the
+        bitmask unsigned integer bm in order of increasing
+        size.
+        
+        A component of a bitmask is a power of 2 whose
+        corresponding bit in the binary representation of
+        the bitmask unsigned integer is 1.
+
+        Args:
+            bm (np.uint): Unsigned integer representing the
+                    bitmask whose components are to be
+                    iterated over.
+
+        Yields:
+            np.uint: A component of the bitmask bm. Collectively,
+                    every component of bm is yielded exactly
+                    once and are yielded in order of strictly
+                    increasing size.
+        """
         while bm:
             bm2 = np.bitwise_and(bm, ~(bm - 1))
             yield bm2
@@ -695,30 +824,168 @@ class Sudoku(object):
         return
 
     @staticmethod
-    def bitmaskIndicesGenerator(bm: np.uint) -> Generator[int, None, None]:
+    def bitmaskIndicesGenerator(
+        bm: np.uint,
+    ) -> Generator[np.uint, None, None]:
+        """
+        Generator iterating over the 0-indexed indices
+        of the components of the bitmask unsigned integer
+        bm in order of increasing size.
+        
+        A component of a bitmask is a power of 2 whose
+        corresponding bit in the binary representation of
+        the bitmask unsigned integer is 1. The index of
+        this component is the logarithm base 2 of component
+        (i.e. the exponent of 2 equal to the component).
+
+        Args:
+            bm (np.uint): Unsigned integer representing the
+                    bitmask whose component indices are to be
+                    iterated over.
+
+        Yields:
+            np.uint: The index of a component of the bitmask bm.
+                    Collectively, the index of every component
+                    of bm is yielded exactly once and are yielded
+                    in order of strictly increasing size.
+        """
         while bm:
             bm2 = np.bitwise_and(bm, ~(bm - 1))
             yield np.frexp(bm2)[1] - 1
             bm ^= bm2
         return
 
-    def stateArray2Board(self, state_bm: np.ndarray) -> list[list[int]]:
+    def stateArray2Board(
+        self,
+        state_bm: np.ndarray,
+    ) -> list[list[int]]:
+        """
+        Converts a bitmask state array into the corresponding
+        Sudoku. For elements with more than one option, the
+        returned board takes the value 0, signifying that the
+        element is unset.
+        
+        A bitmask state array for a given Sudoku is a 2-dimensional
+        array with the same dimensions as the initial Sudoku board
+        (or equivalently is a square array with side length equal
+        to the attribute board_side_length for that Sudoku object),
+        whose elements are bitmasks representing the values that
+        the element may take. A given element may take a given value
+        num if and only if the bit with zero-indexed index (num - 1)
+        of the bitmask of that element is set (i.e. the bit num from
+        the right of the binary representation of the bitmask integer
+        has the value 1). Consequently, a given element in the
+        bitmask state array has a set value if and only if the
+        bitmask of that element has exactly one set bit (of equivalently
+        the bitmask integer is equal to a non-negative power of 2).
+        Given that for a given Sudoku no value greater than its value
+        of board_side_length is allowed, the bitmask integer of any
+        element in the bitmask state array must be strictly less than
+        2 ** board_side_length.
+
+        Args:
+            state_bm (np.ndarray): 2-dimensional square numpy array
+                    of np.uint:s, whose side length is equal to the
+                    attribute board_side_length
+
+        Returns:
+            list[list[int]]: The Sudoku board corresponding to the
+                    given bitmask state array for this Sudoku.
+        
+        Example:
+        TODO
+        """
         num_mx = self.board_side_length
         res = [[0] * num_mx for _ in range(num_mx)]
         for i1 in range(num_mx):
             for i2 in range(num_mx):
                 bm = state_bm[i1][i2]
                 if not bm: return []
-                res[i1][i2] = 0 if np.bitwise_count(bm) > 1 else int(self.getSmallestSetBit(bm)) + 1
+                res[i1][i2] = 0 if np.bitwise_count(bm) > 1 else int(self.getLeastSignificantSetBit(bm)) + 1
         return res
 
     def getRowSlice(self, row_idx: int) -> tuple[slice, slice]:
+        """
+        Calculates the slice of the Sudoku board corresponding
+        to the Sudoku row with 0-indexed index row_idx.
+
+        Args:
+            row_idx (int): Non-negative integer giving the
+                    0-indexed index of the row for which the
+                    slice is to be found.
+
+        Raises:
+            ValueError: Raised if row_idx is not non-negative or
+                    is not strictly less than the attribute
+                    board_side_length.
+                    
+        Returns:
+            tuple[slice, slice]: 2-tuple of slice objects, with
+                    index 0 corresponding to the range of 0-indexed
+                    rows of the Sudoku board and 1 corresponding to
+                    the range of 0-indexed columns of the Sudoku
+                    board comprising the row with 0-indexed index
+                    row_idx.
+        """
+        if not 0 <= row_idx < self.board_side_length:
+            raise ValueError("row_idx must be between 0 and "
+                            f"{self.board_side_length - 1} inclusive")
         return (slice(row_idx, row_idx + 1), slice(None))
     
     def getColumnSlice(self, col_idx: int) -> tuple[slice, slice]:
+        """
+        Calculates the slice of the Sudoku board corresponding
+        to the Sudoku column with 0-indexed index col_idx.
+
+        Args:
+            col_idx (int): Non-negative integer giving the
+                    0-indexed index of the column for which the
+                    slice is to be found.
+
+        Raises:
+            ValueError: Raised if col_idx is not non-negative or
+                    is not strictly less than the attribute
+                    board_side_length.
+                    
+        Returns:
+            tuple[slice, slice]: 2-tuple of slice objects, with
+                    index 0 corresponding to the range of 0-indexed
+                    rows of the Sudoku board and 1 corresponding to
+                    the range of 0-indexed columns of the Sudoku
+                    board comprising the column with 0-indexed index
+                    col_idx.
+        """
+        if not 0 <= col_idx < self.board_side_length:
+            raise ValueError("col_idx must be between 0 and "
+                            f"{self.board_side_length - 1} inclusive")
         return (slice(None), slice(col_idx, col_idx + 1))
     
     def getBoxSlice(self, box_idx: int) -> tuple[slice, slice]:
+        """
+        Calculates the slice of the Sudoku board corresponding
+        to the Sudoku box with 0-indexed index box_idx.
+
+        Args:
+            box_idx (int): Non-negative integer giving the
+                    0-indexed index of the box for which the
+                    slice is to be found.
+
+        Raises:
+            ValueError: Raised if box_idx is not non-negative or
+                    is not strictly less than the attribute
+                    board_side_length.
+                    
+        Returns:
+            tuple[slice, slice]: 2-tuple of slice objects, with
+                    index 0 corresponding to the range of 0-indexed
+                    rows of the Sudoku board and 1 corresponding to
+                    the range of 0-indexed columns of the Sudoku
+                    board comprising the box with 0-indexed index
+                    box_idx.
+        """
+        if not 0 <= box_idx < self.board_side_length:
+            raise ValueError("box_idx must be between 0 and "
+                            f"{self.board_side_length - 1} inclusive")
         j1, j2 = divmod(box_idx, self.box_shape[0])
         #print(j1, j2)
         return (
@@ -726,7 +993,49 @@ class Sudoku(object):
             slice(self.box_shape[1] * j2, self.box_shape[1] * (j2 + 1)),
         )
 
-    def getSlice(self, region_typ_idx: int, region_ext_idx: int) -> tuple[slice, slice]:
+    def getSlice(
+        self,
+        region_typ_idx: int,
+        region_ext_idx: int,
+    ) -> tuple[slice, slice]:
+        """
+        Calculates the slice of the Sudoku board corresponding
+        to the Sudoku region (i.e. row, column or box) with 0-indexed
+        region type index region_typ_idx and 0-indexed index for
+        the regions of that type region_ext_idx.
+
+        The region type indices correspond to the following region types:
+            0- corresponds to a row
+            1- corresponds to a column
+            2- corresponds to a box
+
+        Args:
+            region_typ_idx (int): Integer between 0 and 2 inclusive
+                    indicating the type of region the slice should
+                    represent, with 0 corresponding to row, 1 to
+                    column and 2 to box.
+            region_ext_idx (int): Non-negative integer giving the
+                    0-indexed index of the region for which the
+                    slice is to be found.
+
+        Raises:
+            ValueError: Raised if region_ext_idx is not non-negative
+                    or is not strictly less than the attribute
+                    board_side_length, or if region_typ_idx is not
+                    between 0 and 2 inclusive.
+                    
+        Returns:
+            tuple[slice, slice]: 2-tuple of slice objects, with
+                    index 0 corresponding to the range of 0-indexed
+                    rows of the Sudoku board and 1 corresponding to
+                    the range of 0-indexed columns of the Sudoku
+                    board comprising the region with 0-indexed region
+                    type region_typ_idx and 0-indexed index of the
+                    region of that type region_ext_idx.
+        """
+        if not 0 <= region_ext_idx < self.board_side_length:
+            raise ValueError("region_ext_idx must be between 0 and "
+                            f"{self.board_side_length - 1} inclusive")
         match region_typ_idx:
             case 0:
                 res = self.getRowSlice(region_ext_idx)
@@ -738,7 +1047,28 @@ class Sudoku(object):
                 raise ValueError("slc_typ must be an integer between 0 and 2 inclusive")
         return res
     
-    def regionIndices2Position(self, region_typ_idx: int, region_inds: tuple[int, int]) -> tuple[int, int]:
+    def regionIndices2Position(
+        self,
+        region_typ_idx: int,
+        region_inds: tuple[int, int],
+    ) -> tuple[int, int]:
+        """
+        
+
+        Args:
+            region_typ_idx (int): _description_
+            region_inds (tuple[int, int]): _description_
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            tuple[int, int]: _description_
+        """
+        for region_idx in region_inds:
+            if not 0 <= region_idx < self.board_side_length:
+                raise ValueError("Both elements of region_inds must be between "
+                                f"0 and {self.board_side_length - 1} inclusive")
         match region_typ_idx:
             case 0:
                 # Row
@@ -755,20 +1085,31 @@ class Sudoku(object):
                 raise ValueError("slc_typ must be an integer between 0 and 2 inclusive")
         return res
     
-    def regionIndices2EncodedPosition(self, region_typ_idx: int, region_inds: tuple[int, int]) -> int:
-        return self.encodeIndices(*self.regionIndices2Position(region_typ_idx, region_inds))
+    def regionIndices2EncodedPosition(
+        self,
+        region_typ_idx: int,
+        region_inds: tuple[int, int],
+    ) -> int:
+        return self.encodePositionIndices(*self.regionIndices2Position(region_typ_idx, region_inds))
 
-    def getRegionIndicesFromPosition(self, idx1: int, idx2: int) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
+    def getRegionIndicesFromPosition(
+        self,
+        idx1: int,
+        idx2: int,
+    ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
         i1, j1 = divmod(idx1, self.box_shape[0])
         i2, j2 = divmod(idx2, self.box_shape[1])
 
         #box_idx = (idx1 // self.box_shape[0]) * self.box_shape[0] + (idx2 // self.box_shape[1])
         return ((idx1, idx2), (idx2, idx1), (i1 * self.box_shape[0] + i2, j1 * self.box_shape[1] + j2))
 
-    def getRegionIndicesFromEncodedPosition(self, enc_idx: int) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
-        return self.getRegionIndicesFromPosition(*self.decodeIndices(enc_idx))
+    def getRegionIndicesFromEncodedPosition(
+        self,
+        enc_idx: int,
+    ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
+        return self.getRegionIndicesFromPosition(*self.decodePositionIndices(enc_idx))
 
-    def _simplifyState(
+    def simplifyState(
         self,
         state_bm: np.ndarray,
         opts_count_dict: SortedDict,
@@ -787,7 +1128,7 @@ class Sudoku(object):
             enc_idx = enc_inds_stk.pop()
             enc_inds_in_stk.remove(enc_idx)
             
-            idx1, idx2 = self.decodeIndices(enc_idx)
+            idx1, idx2 = self.decodePositionIndices(enc_idx)
             
             region_inds_lst = self.getRegionIndicesFromPosition(idx1, idx2)
             bm0 = state_bm[idx1, idx2]
@@ -807,7 +1148,7 @@ class Sudoku(object):
                     slc_idx_lst = np.where(np.bitwise_and(slc_arr, bm2))[0]
                     if len(slc_idx_lst) != 1: continue
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], slc_idx_lst[0]))
-                    enc_idx2 = self.encodeIndices(*inds2)
+                    enc_idx2 = self.encodePositionIndices(*inds2)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt <= 1:
                         return False
@@ -828,7 +1169,7 @@ class Sudoku(object):
                 region_int_idx_set = set(np.where(np.bitwise_and(slc_arr, bm0))[0]) - {region_inds[1]}
                 for region_int_idx in region_int_idx_set:
                     inds2 = self.regionIndices2Position(region_typ_idx, (region_inds[0], region_int_idx))
-                    enc_idx2 = self.encodeIndices(*inds2)
+                    enc_idx2 = self.encodePositionIndices(*inds2)
                     opts_cnt = np.bitwise_count(state_bm[*inds2])
                     if opts_cnt == 1: return False
                     state_bm[*inds2] = np.bitwise_and(state_bm[*inds2], ~bm0)
@@ -852,7 +1193,13 @@ class Sudoku(object):
         enc_inds_changed = set(range(self.board_side_length * self.board_side_length))
         for enc_inds in opts_count_dict.values():
             enc_inds_changed -= enc_inds
-        self._simplifyState(state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm, enc_inds_changed)
+        self.simplifyState(
+            state_bm,
+            opts_count_dict,
+            region_available_nums_bm,
+            region_available_spaces_bm,
+            enc_inds_changed,
+        )
 
         def recur(
             state_bm: np.ndarray,
@@ -869,7 +1216,7 @@ class Sudoku(object):
             
             n_opts, enc_inds = opts_count_dict.peekitem(0)
             enc_idx = next(iter(enc_inds))
-            idx1, idx2 = self.decodeIndices(enc_idx)
+            idx1, idx2 = self.decodePositionIndices(enc_idx)
             for j in self.bitmaskIndicesGenerator(state_bm[idx1, idx2]):
                 state_bm2 = copy.deepcopy(state_bm)
                 num_bm = dtype(1 << j)
@@ -884,42 +1231,128 @@ class Sudoku(object):
                     region_available_nums_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_nums_bm2[region_typ_idx, region_inds[0]], num_bm_compl)
                     region_available_spaces_bm2[region_typ_idx, region_inds[0]] = np.bitwise_and(region_available_spaces_bm2[region_typ_idx, region_inds[0]], ~dtype(1 << region_inds[1]))
                 if not opts_count_dict2[n_opts]: opts_count_dict2.pop(n_opts)
-                if self._simplifyState(state_bm2, opts_count_dict2, region_available_nums_bm2, region_available_spaces_bm2, {enc_idx}):
+                if self.simplifyState(
+                    state_bm2,
+                    opts_count_dict2,
+                    region_available_nums_bm2,
+                    region_available_spaces_bm2,
+                    {enc_idx},
+                ):
                     yield from recur(state_bm2, opts_count_dict2, region_available_nums_bm2, region_available_spaces_bm2)
             return
 
         yield from recur(state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm)
         return
 
+class InvalidSudokuSolution(Exception):
+    """
+    Exception raised when an invalid solution to a given
+    Sudoku if put forward as a solution. This can be
+    for reasons including:
+     1) The dimensions of the Sudoku do not match the
+        initial Sudoku board.
+     2) The solution has unset entries (so has not been
+        completed).
+     3) Elements that were set in the initial Sudoku take
+        a different value in the solution
+     4) The solution contains immediate conflicts (i.e.
+        the same value appears more than once in a row,
+        column or box of the Sudoku).
+    """
+
+def findAllSolutionsToSudokuInCSV(
+    filename_in: str,
+    check_solution_valid: bool=True,
+    raise_error_if_invalid_found: bool=True,
+) -> Generator[str, None, None]:
+    sudoku = Sudoku.loadSudokuFromCSV(filename_in)
+    for sol in sudoku.solutionsGenerator():
+        sol_str = sudoku.getBoardPrintString(
+            sol,
+            sudoku.box_shape,
+            initial_numbers_bold=True,
+            initial_board=sudoku.initial_board,
+            check_box_shape_and_board_validity=False,
+        )
+        if check_solution_valid and not sudoku.checkSolutionValid(sol):
+            if raise_error_if_invalid_found:
+                raise InvalidSudokuSolution(f"invalid solution returned:\n{sol_str}")
+            continue
+        yield sol_str
+    return
+
+def findAnySolutionToSudokuInCSV(
+    filename_in: str,
+    check_solution_valid: bool=True,
+) -> Optional[str]:
+    for sol in findAllSolutionsToSudokuInCSV(
+        filename_in,
+        check_solution_valid=check_solution_valid,
+    ):
+        return sol
+    return None
+
+
 def main() -> None:
-    if len(sys.argv) < 2:
-        sys.exit("Too few command line arguments")
-    elif len(sys.argv) > 2:
-        sys.exit("Too many command line arguments")
-    filename = sys.argv[1]
-    filename_in = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), f"../sudoku_csv_files/{filename}"))
+    parser = argparse.ArgumentParser(
+        prog="SudokuSolver",
+        description="Program solving Sudokus stored in .csv files",
+    )
+
+    parser.add_argument(
+        "filename",
+        help="The path to the .csv file containing the Sudoku to be solved",
+    )
+    parser.add_argument(
+        "-s",
+        "--single",
+        action="store_true",
+        help=(
+            "If included, specifies that one of the possible solution (if any "
+            "exist) should be found, with the search stopped after a solution is "
+            "found. Otherwise all possible solutions to the Sudoku are to be "
+            "found."
+        ),
+        #dest="single_solution",
+    )
+
+    args = parser.parse_args()
+    filename_in : str = args.filename
+    single_solution : bool = args.single
+
+    #if len(sys.argv) < 2:
+    #    sys.exit("Too few command line arguments")
+    #elif len(sys.argv) > 2:
+    #    sys.exit("Too many command line arguments")
+    #filename : str = sys.argv[1]
+    #filename_in : str = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), f"../sudoku_csv_files/{filename}"))
+    
+    #single_solution : bool = False
+    
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
     print("Initial Sudoku:")
     print(sudoku)
     sol_cnt = 0
     since = time.time()
-    for sol in sudoku.solutionsGenerator():
-        sol_cnt += 1
-        print(f"Solution {sol_cnt}")
-        print(
-            sudoku.getBoardPrintString(
-                sol,
-                sudoku.box_shape,
-                initial_numbers_bold=True,
-                initial_board=sudoku.initial_board,
-                check_box_shape_and_board_validity=False,
-            )
-        )
-        print(f"solution is {'' if sudoku.checkSolutionValid(sol) else 'in'}valid")
-        print(f"total search time before finding solution {sol_cnt} = {(time.time() - since):.4f} seconds")
+    try:
+        for sol_str in findAllSolutionsToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True):
+            sol_cnt += 1
+            sol_cnt_str = "" if single_solution else f" {sol_cnt}"
+            print(f"Solution{sol_cnt_str}")
+            print(sol_str)
+            print(f"total search time before finding solution{sol_cnt_str} = {(time.time() - since):.4f} seconds")
+            if single_solution: break
+        else:
+            if single_solution:
+                print("No solutions found")
+                return
+    except InvalidSudokuSolution as e:
+        sys.exit(str(e))
+    if single_solution:
+        return
     t = (time.time() - since)
 
-    print(f"\ntotal number of solutions = {sol_cnt}")
+    print(f"\ntotal number of solutions found = {sol_cnt}")
     print(f"time to search for all possible solutions = {t:.4f} seconds")
     return
 
