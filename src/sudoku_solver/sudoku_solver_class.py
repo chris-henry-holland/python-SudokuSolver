@@ -235,8 +235,15 @@ class Sudoku(object):
         board board_side_length. An invalid value results in an exception
         being raised.
 
-        A value for board_prov is for a given strictly positive integer
-        board_side_length has a valid format if and only if TODO
+        A value for board is for a given strictly positive integer
+        board_side_length has a valid format if and only if it satisfies
+        every one of the following properties:
+         1) board is an indexable container (e.g. a list or tuple)
+            with a defined length equal to board_side_length
+         2) every element of board is also an indexable container
+            with a defined length equal to board_side_length
+         3) every element inside every container inside board is
+            an integer between 0 and board_side_length inclusive.
 
         Note that this only checks the format of the board. It does not
         check whether the Sudoku is solvable or even whether there are
@@ -258,22 +265,38 @@ class Sudoku(object):
         None
 
         Raises:
-            TODO
-            TypeError: Raised if the proposed box_shape value is not an
-                    indexable container or any of its elements are not
-                    integer types
-            ValueError: Raised if box_shape does not contain exactly two
-                    elements or either of its elements are not strictly
-                    positive.
+            TypeError: Raised if the proposed board value (board_prov)
+                    is not an indexable container with defined length
+                    or any of its elements are not indexable containers
+                    with defined length containing only integers
+            ValueError: Raised if the length of board or the length of
+                    any of its elements is not equal to board_side_length
+                    or any of the containers in board holds an integer
+                    that is not between 0 and board_side_length inclusive.
         """
+        if not hasattr(board_prov, "__getitem__") or not hasattr(board_prov, "__len__"):
+            raise TypeError(f"{board_name} must be an indexable container with defined length.")
         if len(board_prov) != board_side_length:
             raise ValueError(f"{board_name} must have length {board_side_length}")
-        if any(len(row) != board_side_length for row in board_prov):
-            raise ValueError(f"every row in {board_name} must have length {board_side_length}")
-        if any(not isinstance(x, int) for row in board_prov for x in row):
-            raise TypeError(f"every entry in {board_name} must be an integer")
-        if any(x > board_side_length or x < 0 for row in board_prov for x in row):
-            raise ValueError(f"every entry in {board_name} must be an integer between 0 and {board_side_length} inclusive.")
+        for i in range(len(board_prov)):
+            try:
+                row = board_prov[i]
+            except IndexError:
+                raise TypeError(f"{board_name} must be an indexable container with defined length.")
+            if not hasattr(row, "__getitem__") or not hasattr(row, "__len__"):
+                raise TypeError(f"every row of {board_name} must be an indexable container with defined length.")
+            if len(row) != board_side_length:
+                raise ValueError(f"every row in {board_name} must have length {board_side_length}")
+            for j in range(len(row)):
+                try:
+                    num = row[j]
+                except IndexError:
+                    raise TypeError(f"every row in {board_name} must be an indexable container with defined length.")
+                
+                if not isinstance(num, int):
+                    raise TypeError(f"every entry in {board_name} must be an integer")
+                if num > board_side_length or num < 0:
+                    raise ValueError(f"every entry in {board_name} must be an integer between 0 and {board_side_length} inclusive.")
         return
     
     @property
@@ -311,10 +334,25 @@ class Sudoku(object):
         not have a solution).
 
         Args:
-            board (list[list[int]]): TODO
-
-                    It is assumed that the format of board is
-                    valid for the given box shape.
+            board (list[list[int]]): A list of lists of
+                    integers, representing the Sudoku board to be
+                    checked for immediate conflicts, where
+                    each inner list represents a row of the Sudoku
+                    board. The outer list and each of the inner lists
+                    must have the same number of elements as the side
+                    length of the Sudoku grid (equal to the product of
+                    the two box_shape dimensions, by default 9), and each
+                    element of the inner list must be an integer between
+                    0 and the side length of the Sudoku grid inclusive,
+                    with the elements with set initial values given by
+                    that strictly positive integer value and the
+                    initially unset elements represented by the value
+                    zero.
+                    It is assumed that the format of board is valid
+                    for the given box shape (i.e. the length of the
+                    lists and the values in the inner lists obey the
+                    conditions given above), and this will not be
+                    checked.
             box_shape (tuple[int, int]): 2-tuple of strictly
                     positive integers specifying the shape of the
                     Sudoku boxes of the Sudoku represented by board,
@@ -466,23 +504,6 @@ class Sudoku(object):
         Returns:
             str: String representing the given Sudoku board with formatting,
                     suitable for printing to console.
-
-        Example:
-        TODO
-        >>> print()
-         -----------------------------
-        ┆ 7  8    │ 4       │ 1  2    ┆
-        ┆ 6       │    7  5 │       9 ┆
-        ┆         │ 6     1 │    7  8 ┆
-        ┆─────────┼─────────┼─────────┆
-        ┆       7 │    4    │ 2  6    ┆
-        ┆       1 │    5    │ 9  3    ┆
-        ┆ 9     4 │    6    │       5 ┆
-        ┆─────────┼─────────┼─────────┆
-        ┆    7    │ 3       │    1  2 ┆
-        ┆ 1  2    │       7 │ 4       ┆
-        ┆    4  9 │ 2     6 │       7 ┆
-         -----------------------------
         """
 
         if check_box_shape_and_board_validity:
@@ -930,9 +951,6 @@ class Sudoku(object):
         Returns:
             list[list[int]]: The Sudoku board corresponding to the
                     given bitmask state array for this Sudoku.
-        
-        Example:
-        TODO
         """
         num_mx = self.board_side_length
         res = [[0] * num_mx for _ in range(num_mx)]
@@ -1505,7 +1523,86 @@ class Sudoku(object):
                 )
         return True
 
-    def solutionsGenerator(self) -> Generator[list[list[int]], None, None]:
+    def solutionsGenerator(
+        self,
+    ) -> Generator[list[list[int]], None, None]:
+        """
+        Generator iterating over every possible valid solution
+        of the Sudoku.
+
+        Yields:
+            list[list[int]]: List of lists of integers representing
+                    one of the solutions of the Sudoku board, where
+                    the outer list and each of the inner lists has
+                    length equal to the attribute board_side_length,
+                    each list in the outer list represents a row
+                    of the Sudoku board (ordered from top to bottom)
+                    and each element in an inner list is a strictly
+                    positive integer no greater than the attribute
+                    board_side_length that represents the value of
+                    an element in that row (ordered from left to
+                    right) the corresponding Sudoku board element
+                    takes for the solution being yielded.
+                    The solutions are yielded in the order they
+                    are identified by the backtracking algorithm
+                    used to find the solutions, meaning there
+                    is no particular significance to the order
+                    the solutions are yielded in terms of their
+                    contents.
+        
+        Example:
+        >>> sudoku = Sudoku(
+        ...     [
+        ...         [7, 8, 0, 4, 0, 0, 1, 2, 0],
+        ...         [6, 0, 0, 0, 7, 5, 0, 0, 9],
+        ...         [0, 0, 0, 6, 0, 1, 0, 7, 8],
+        ...         [0, 0, 7, 0, 4, 0, 2, 6, 0],
+        ...         [0, 0, 1, 0, 5, 0, 9, 3, 0],
+        ...         [9, 0, 4, 0, 6, 0, 0, 0, 5],
+        ...         [0, 7, 0, 3, 0, 0, 0, 1, 2],
+        ...         [1, 2, 0, 0, 0, 7, 4, 0, 0],
+        ...         [0, 4, 9, 2, 0, 6, 0, 0, 7],
+        ...     ]
+        ... )
+        >>> print(sudoku)
+         -----------------------------
+        ┆ 7  8    │ 4       │ 1  2    ┆
+        ┆ 6       │    7  5 │       9 ┆
+        ┆         │ 6     1 │    7  8 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆       7 │    4    │ 2  6    ┆
+        ┆       1 │    5    │ 9  3    ┆
+        ┆ 9     4 │    6    │       5 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆    7    │ 3       │    1  2 ┆
+        ┆ 1  2    │       7 │ 4       ┆
+        ┆    4  9 │ 2     6 │       7 ┆
+         -----------------------------
+        >>> for sol in sudoku.solutionsGenerator():
+        ...     print(
+        ...         sudoku.getBoardPrintString(
+        ...             sol,
+        ...             sudoku.box_shape,
+        ...             initial_numbers_bold=False,
+        ...             initial_board=sudoku.initial_board,
+        ...             check_box_shape_and_board_validity=False,
+        ...         )
+        ...     )
+         -----------------------------
+        ┆ 7  8  5 │ 4  3  9 │ 1  2  6 ┆
+        ┆ 6  1  2 │ 8  7  5 │ 3  4  9 ┆
+        ┆ 4  9  3 │ 6  2  1 │ 5  7  8 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆ 8  5  7 │ 9  4  3 │ 2  6  1 ┆
+        ┆ 2  6  1 │ 7  5  8 │ 9  3  4 ┆
+        ┆ 9  3  4 │ 1  6  2 │ 7  8  5 ┆
+        ┆─────────┼─────────┼─────────┆
+        ┆ 5  7  8 │ 3  9  4 │ 6  1  2 ┆
+        ┆ 1  2  6 │ 5  8  7 │ 4  9  3 ┆
+        ┆ 3  4  9 │ 2  1  6 │ 8  5  7 ┆
+         -----------------------------
+        
+        """
         state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateArray()
         pos_enc_changed = set(range(self.board_side_length * self.board_side_length))
         for pos_enc in opts_count_dict.values():
@@ -1597,8 +1694,44 @@ def findAllSolutionsToSudokuInCSV(
     filename_in: str,
     check_solution_valid: bool=True,
     raise_error_if_invalid_found: bool=True,
-) -> Generator[str, None, None]:
+) -> tuple[str, list[str]]:
+    """
+    For a Sudoku stored in a .csv file at filename_in,
+    returns a formatted string representing that Sudoku
+    and a similarly formatted string representing every
+    possible solution of that Sudoku.
+
+    The contents of a .csv file representing a Sudoku should
+        be as follows:
+          Line 1: A pair of comma separated strictly positive integers
+                giving the box shape of the Sudoku (the number of rows
+                and columns respectively in each box).
+          Subsequent lines: Comma separated non-negative integer values,
+                the lines giving the rows of the initial Sudoku board
+                in order from top to bottom and each line containing the
+                values in the corresponding Sudoku row from left to
+                right in order, with the unset elements represented
+                by 0. The number of subsequent lines and the number
+                of comma separated values in each of these lines must
+                equal the product of the two elements on line 1, with
+                no integer value in these lines exceeding this product.
+        Empty lines are ignored and lines whose first non-space
+        character is "#" are treated as comments and are so also
+        ignored.
+
+    Args:
+        filename_in (str): _description_
+        check_solution_valid (bool, optional): _description_. Defaults to True.
+        raise_error_if_invalid_found (bool, optional): _description_. Defaults to True.
+
+    Raises:
+        InvalidSudokuSolution: _description_
+
+    Returns:
+        tuple[str, list[str]]: _description_
+    """
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
+    res = [str(sudoku), []]
     for sol in sudoku.solutionsGenerator():
         sol_str = sudoku.getBoardPrintString(
             sol,
@@ -1611,25 +1744,40 @@ def findAllSolutionsToSudokuInCSV(
             if raise_error_if_invalid_found:
                 raise InvalidSudokuSolution(f"invalid solution returned:\n{sol_str}")
             continue
-        yield sol_str
-    return
+        res[1].append(sol_str)
+    return tuple(res)
 
 def findAnySolutionToSudokuInCSV(
     filename_in: str,
     check_solution_valid: bool=True,
-) -> Optional[str]:
-    for sol in findAllSolutionsToSudokuInCSV(
-        filename_in,
-        check_solution_valid=check_solution_valid,
-    ):
-        return sol
-    return None
+    raise_error_if_invalid_found: bool=True,
+) -> tuple[str, Optional[str]]:
+    sudoku = Sudoku.loadSudokuFromCSV(filename_in)
+    res = [str(sudoku), None]
+    for sol in sudoku.solutionsGenerator():
+        sol_str = sudoku.getBoardPrintString(
+            sol,
+            sudoku.box_shape,
+            initial_numbers_bold=True,
+            initial_board=sudoku.initial_board,
+            check_box_shape_and_board_validity=False,
+        )
+        if check_solution_valid and not sudoku.checkSolutionValid(sol):
+            if raise_error_if_invalid_found:
+                raise InvalidSudokuSolution(f"invalid solution returned:\n{sol_str}")
+            continue
+        res[1] = sol_str
+        break
+    return tuple(res)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="SudokuSolver",
-        description="Program solving Sudokus stored in .csv files",
+        description=(
+            "Program solving Sudokus stored in .csv files, printing "
+            "a solution or the solutions (if any) to terminal."
+        )
     )
 
     parser.add_argument(
@@ -1641,12 +1789,11 @@ def main() -> None:
         "--single",
         action="store_true",
         help=(
-            "If included, specifies that one of the possible solution (if any "
-            "exist) should be found, with the search stopped after a solution is "
-            "found. Otherwise all possible solutions to the Sudoku are to be "
-            "found."
+            "If this flag is used, specifies that only one of the possible"
+            "solutions (if any exist) should be found and printed, with "
+            "the search stopped after a solution is found. Otherwise all "
+            "possible solutions to the Sudoku are to be found and printed."
         ),
-        #dest="single_solution",
     )
 
     args = parser.parse_args()
@@ -1663,29 +1810,38 @@ def main() -> None:
     #single_solution : bool = False
     
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
-    print("Initial Sudoku:")
-    print(sudoku)
-    sol_cnt = 0
+    #print("Initial Sudoku:")
+    #print(sudoku)
+    #sol_cnt = 0
     since = time.time()
-    try:
-        for sol_str in findAllSolutionsToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True):
-            sol_cnt += 1
-            sol_cnt_str = "" if single_solution else f" {sol_cnt}"
-            print(f"Solution{sol_cnt_str}")
-            print(sol_str)
-            print(f"total search time before finding solution{sol_cnt_str} = {(time.time() - since):.4f} seconds")
-            if single_solution: break
+    if single_solution:
+        try:
+            init_str, sol_str = findAnySolutionToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True)
+        except InvalidSudokuSolution as e:
+            sys.exit(str(e))
+        print("Initial Sudoku:")
+        print(init_str)
+        if sol_str is None:
+            print("No solutions found")
         else:
-            if single_solution:
-                print("No solutions found")
-                return
+            print(f"Solution")
+            print(sol_str)
+            print(f"total search time before finding a solution = {(time.time() - since):.4f} seconds")
+        return
+    try:
+        init_str, sol_strs = findAllSolutionsToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True)
     except InvalidSudokuSolution as e:
         sys.exit(str(e))
-    if single_solution:
-        return
+    print("Initial Sudoku:")
+    print(init_str)
+    sol_cnt = 0
+    for sol_str in sol_strs:
+        sol_cnt += 1
+        print(f"Solution {sol_cnt}")
+        print(sol_str)
     t = (time.time() - since)
-
-    print(f"\ntotal number of solutions found = {sol_cnt}")
+    pl_str = "" if sol_cnt == 1 else "s"
+    print(f"\nThis Sudoku has exactly {sol_cnt} solution{pl_str}")
     print(f"time to search for all possible solutions = {t:.4f} seconds")
     return
 
