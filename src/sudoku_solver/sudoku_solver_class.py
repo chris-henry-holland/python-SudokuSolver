@@ -781,14 +781,87 @@ class Sudoku(object):
                             f"{self.board_side_length ** 2 - 1} includisve")
         return divmod(pos_enc, self.board_side_length)
 
-    def createInitialStateArray(
+    def createInitialStateVariables(
         self,
     ) -> tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]:
         """
+        Creates the initial state variables for this Sudoku:
+         1) The bitmask state array- an array of bitmasks representing
+            the potential (non-excluded) values available to each
+            element of the Sudoku board.
+         2) The element options count dictionary, a sorted dictionary
+            grouping the encoded positions of elements that have not
+            yet been set (i.e. have more than one potential value) by
+            the number of potential values they each have available.
+         3) The region available values bitmask array, which for each
+            region (i.e. each row, column and box in the Sudoku grid)
+            uses a bitmask to represent the values that have not yet
+            been set in that region.
+         4) The region available spaces bitmask array, which for each
+            region (i.e. each row, column and box in the Sudoku grid)
+            uses a bitmask to represent the positions of the elements
+            in that region that have not yet been set (i.e. have more
+            than one potential value).
 
+        These are calculated for the initial Sudoku board (the attribute
+        initial_board), calculating the four variables taking into
+        account the initially set values, but performing no simplification
+        of the board (i.e. no logic is performed to calculate any of
+        the consequences, even obvious ones, on any other element of
+        the grid beyond excluding values used by other elements in
+        any of the shared regions from the potential values available).
 
         Returns:
-            tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]: _description_
+            tuple[np.ndarray, SortedDict, np.ndarray, np.ndarray]:
+
+                Index 0 (np.ndarray): The bitmask state array, a
+                    2-dimensional square numpy array of unsigned ints
+                    (np.uint) with side length equal to the attribute
+                    board_side_length, where the integers correspond
+                    to a bitmask, where the 0-indexed i:th bit is set
+                    (i.e. the (i + 1):th rightmost bit in the binary
+                    representation of the bitmask integer is 1) if and
+                    only if the value (i + 1) has not been excluded as
+                    a potential value the corresponding element of the
+                    Sudoku might take.
+
+                Index 1 (SortedDict): The element options count dictionary,
+                    a sorted dictionary whose keys are integers strictly
+                    greater than 1, representing the number of non-excluded
+                    values each Sudoku element with more than one such
+                    non-excluded values have, with the corresponding value
+                    being a set of integers comprising the encoded positions
+                    in the Sudoku board that have that number of non-excluded
+                    values.
+
+                Index 2 (np.ndarray): The region available values bitmask
+                    array, a 2-dimensional numpy array of unsigned
+                    ints (np.uint) with dimension 0 of length 3 and
+                    dimension 1 of length equal to the
+                    attribute board_side_length. The element with index
+                    (idx1, idx2) gives a bitmask representing the values
+                    not yet set in the region of type idx1 (where 0 is
+                    a row, 1 is a column, 2 is a box), with region index
+                    idx2, where a number i is not one of the set values
+                    in that region if and only if the (i - 1):th bit in
+                    the bitmask is set (i.e. the i:th rightmost digit
+                    in the binary representation of the bitmask integer
+                    is 1).
+
+                Index 3 (np.ndarray): The regiona available spaces bitmask
+                    array, a 2-dimensional numpy array of unsigned ints
+                    (np.uint) with dimension 0 of length 3 and dimension 1
+                    of length equal to the attribute board_side_length.
+                    The element with index (idx1, idx2) gives a bitmask
+                    signifying which of the elements in the region of type
+                    idx1 (where 0 is a row, 1 is a column, 2 is a box) with
+                    region index idx2 that have not yet been set to a value
+                    (i.e. have more than one potential value). For an
+                    element in this region whose index within that region
+                    is i, that element's value has not yet been set to a
+                    value if and only if the (i - 1):th bit in the bitmask
+                    is set (i.e. the i:th rightmost digit in the binary
+                    representation of the bitmask integer is 1).
         """
         num_mx = self.board_side_length
         dtype = np.uint
@@ -1603,7 +1676,7 @@ class Sudoku(object):
          -----------------------------
         
         """
-        state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateArray()
+        state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateVariables()
         pos_enc_changed = set(range(self.board_side_length * self.board_side_length))
         for pos_enc in opts_count_dict.values():
             pos_enc_changed -= pos_enc
@@ -1694,6 +1767,7 @@ def findAllSolutionsToSudokuInCSV(
     filename_in: str,
     check_solution_valid: bool=True,
     raise_error_if_invalid_found: bool=True,
+    initial_numbers_bold=True,
 ) -> tuple[str, list[str]]:
     """
     For a Sudoku stored in a .csv file at filename_in,
@@ -1720,23 +1794,58 @@ def findAllSolutionsToSudokuInCSV(
         ignored.
 
     Args:
-        filename_in (str): _description_
-        check_solution_valid (bool, optional): _description_. Defaults to True.
-        raise_error_if_invalid_found (bool, optional): _description_. Defaults to True.
+        filename_in (str): Relative or absolute path to the .csv
+                    file from which the Sudoku to be solved is loacated.
+        check_solution_valid (bool, optional): If given as True, checks
+                each solution found to ensure it is a valid solution
+                to the Sudoku. Otherwise, it is assumed that
+                each solution found is valid.
+            Default: True
+        raise_error_if_invalid_found (bool, optional): If given as True,
+                in the case that a solution is identified that when
+                checked is not a valid solution to this Sudoku, an
+                InvalidSudokuSolution is raised. Otherwise, this
+                invalid solution is simply ignored and not included in
+                the returned list of solutions.
+            Default: True
+        initial_numbers_bold (bool, optional): If given as True, the
+                returned Sudoku strings (including the initial Sudoku)
+                will mark the numbers initially et in the Sudoku (i.e.
+                the non-zero numbers in the .csv file) to be formatted
+                in bold, with the others not marked as bold. Otherwise,
+                none of the numbers in the returned Sudoku strings are
+                marked as bold.
+            Default: True
 
     Raises:
-        InvalidSudokuSolution: _description_
+        InvalidSudokuSolution: Raised if check_solution_valid and
+                raise_error_if_invalid_found are both given as True
+                and one of the solutions, when checked is found not
+                to be a valid solution.
 
     Returns:
-        tuple[str, list[str]]: _description_
+        tuple[str, list[str]]:
+            Index 0: String representing the Sudoku stored in filename_in
+                in its initial state (i.e. before starting the solve).
+                This string is formatted for printing to console.
+
+            Index 1: List of strings representing all solutions to the
+                Sudoku stored in filename_in. Each string represents
+                a completed solution to this Sudoku (i.e. all of the
+                entries in the Sudoku are set in a manner consistent
+                with the Sudoku rules for a Sudoku of the given box
+                size), formatted for printing to console.
+                In the case that there is more than one solution,
+                there is no special significance to the order these
+                appear in this list.
     """
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
-    res = [str(sudoku), []]
+    res = [sudoku.getInitialBoardPrintString(initial_numbers_bold=initial_numbers_bold), []]
     for sol in sudoku.solutionsGenerator():
         sol_str = sudoku.getBoardPrintString(
             sol,
             sudoku.box_shape,
-            initial_numbers_bold=True,
+            initial_numbers_bold=initial_numbers_bold,
             initial_board=sudoku.initial_board,
             check_box_shape_and_board_validity=False,
         )
@@ -1751,14 +1860,84 @@ def findAnySolutionToSudokuInCSV(
     filename_in: str,
     check_solution_valid: bool=True,
     raise_error_if_invalid_found: bool=True,
+    initial_numbers_bold=True,
 ) -> tuple[str, Optional[str]]:
+    """
+    For a Sudoku stored in a .csv file at filename_in,
+    returns a formatted string representing that Sudoku
+    and a similarly formatted string representing one
+    possible solution to the Sudoku (if such a solution
+    exists).
+
+    The contents of a .csv file representing a Sudoku should
+        be as follows:
+          Line 1: A pair of comma separated strictly positive integers
+                giving the box shape of the Sudoku (the number of rows
+                and columns respectively in each box).
+          Subsequent lines: Comma separated non-negative integer values,
+                the lines giving the rows of the initial Sudoku board
+                in order from top to bottom and each line containing the
+                values in the corresponding Sudoku row from left to
+                right in order, with the unset elements represented
+                by 0. The number of subsequent lines and the number
+                of comma separated values in each of these lines must
+                equal the product of the two elements on line 1, with
+                no integer value in these lines exceeding this product.
+        Empty lines are ignored and lines whose first non-space
+        character is "#" are treated as comments and are so also
+        ignored.
+
+    Args:
+        filename_in (str): Relative or absolute path to the .csv
+                    file from which the Sudoku to be solved is loacated.
+        check_solution_valid (bool, optional): If given as True, checks
+                the solution found (if any) to ensure it is a valid
+                solution to the Sudoku. Otherwise, it is assumed that
+                it is a valid solution.
+            Default: True
+        raise_error_if_invalid_found (bool, optional): If given as True,
+                in the case that a solution is identified that when
+                checked is not a valid solution to this Sudoku, an
+                InvalidSudokuSolution is raised. Otherwise, this
+                invalid solution is simply ignored and the first solution
+                found to be valid (if any) is given as the solution.
+            Default: True
+        initial_numbers_bold (bool, optional): If given as True, the
+                returned Sudoku strings (including the initial Sudoku)
+                will mark the numbers initially et in the Sudoku (i.e.
+                the non-zero numbers in the .csv file) to be formatted
+                in bold, with the others not marked as bold. Otherwise,
+                none of the numbers in the returned Sudoku strings are
+                marked as bold.
+            Default: True
+
+    Raises:
+        InvalidSudokuSolution: Raised if check_solution_valid and
+                raise_error_if_invalid_found are both given as True
+                and one of the solutions, when checked is found not
+                to be a valid solution.
+
+    Returns:
+        tuple[str, Optional[str]]:
+            Index 0: String representing the Sudoku stored in filename_in
+                in its initial state (i.e. before starting the solve).
+                This string is formatted for printing to console.
+
+            Index 1: If a solution is found, a string representing
+                that solution to the Sudoku stored in filename_in,
+                otherwise None. The string represents the completed
+                solution to this Sudoku found (i.e. all of the entries
+                in the Sudoku are set in a manner consistent with the
+                Sudoku rules for a Sudoku of the given box size),
+                formatted for printing to console.
+    """
     sudoku = Sudoku.loadSudokuFromCSV(filename_in)
-    res = [str(sudoku), None]
+    res = [sudoku.getInitialBoardPrintString(initial_numbers_bold=initial_numbers_bold), None]
     for sol in sudoku.solutionsGenerator():
         sol_str = sudoku.getBoardPrintString(
             sol,
             sudoku.box_shape,
-            initial_numbers_bold=True,
+            initial_numbers_bold=initial_numbers_bold,
             initial_board=sudoku.initial_board,
             check_box_shape_and_board_validity=False,
         )
@@ -1776,7 +1955,7 @@ def main() -> None:
         prog="SudokuSolver",
         description=(
             "Program solving Sudokus stored in .csv files, printing "
-            "a solution or the solutions (if any) to terminal."
+            "a solution or the solutions (if any) to console."
         )
     )
 
@@ -1800,23 +1979,17 @@ def main() -> None:
     filename_in : str = args.filename
     single_solution : bool = args.single
 
-    #if len(sys.argv) < 2:
-    #    sys.exit("Too few command line arguments")
-    #elif len(sys.argv) > 2:
-    #    sys.exit("Too many command line arguments")
-    #filename : str = sys.argv[1]
-    #filename_in : str = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), f"../sudoku_csv_files/{filename}"))
-    
-    #single_solution : bool = False
-    
-    sudoku = Sudoku.loadSudokuFromCSV(filename_in)
-    #print("Initial Sudoku:")
-    #print(sudoku)
-    #sol_cnt = 0
+    initial_numbers_bold : bool = True
+
     since = time.time()
     if single_solution:
         try:
-            init_str, sol_str = findAnySolutionToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True)
+            init_str, sol_str = findAnySolutionToSudokuInCSV(
+                filename_in,
+                check_solution_valid=True,
+                raise_error_if_invalid_found=True,
+                initial_numbers_bold=initial_numbers_bold,
+            )
         except InvalidSudokuSolution as e:
             sys.exit(str(e))
         print("Initial Sudoku:")
@@ -1829,7 +2002,12 @@ def main() -> None:
             print(f"total search time before finding a solution = {(time.time() - since):.4f} seconds")
         return
     try:
-        init_str, sol_strs = findAllSolutionsToSudokuInCSV(filename_in, check_solution_valid=True, raise_error_if_invalid_found=True)
+        init_str, sol_strs = findAllSolutionsToSudokuInCSV(
+            filename_in,
+            check_solution_valid=True,
+            raise_error_if_invalid_found=True,
+            initial_numbers_bold=initial_numbers_bold,
+        )
     except InvalidSudokuSolution as e:
         sys.exit(str(e))
     print("Initial Sudoku:")
