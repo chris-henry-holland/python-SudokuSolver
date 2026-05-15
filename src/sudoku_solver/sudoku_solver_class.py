@@ -263,10 +263,11 @@ class Sudoku(object):
         """
         Read-only property
 
-        tuple[int, int]: 2-tuple of strictly positive ints representing
-        the box shape of the Sudoku, with index 0 containing
-        the number of rows of the grid in each box and index 1
-        containing the number of columns of the grid in each box.
+        tuple[int, int]: 2-tuple of strictly positive integers
+        representing the box shape of the Sudoku, with index 0
+        containing the number of rows of the grid in each box and
+        index 1 containing the number of columns of the grid in
+        each box.
         """
         return self._box_shape
 
