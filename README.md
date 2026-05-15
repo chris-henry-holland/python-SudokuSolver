@@ -14,10 +14,14 @@ There are currently two main ways to load a Sudoku as a Sudoku object:
 
 Once loaded, a formatted version of the Sudoku board can then be printed to console using the print command.
 
-However, the main feature of the Sudoku class is 
+However, the main feature of the Sudoku class is its ability to solve the Sudoku.
 
+### How to use
 
-Command line
+#### Use within other Python programs and scripts
+
+#### Use as a script
+
 
 ### Brief overview of solution method
 
