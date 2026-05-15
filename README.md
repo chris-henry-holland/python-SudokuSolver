@@ -1,8 +1,5 @@
 # python-SudokuSolver
-Classes and functions to represent and solve of traditional Sudoku puzzles of arbitrary box dimensions.
-
-
-##### [Video Demo](https://youtu.be/jNQXAC9IVRw)
+Classes and functions to represent and solve of traditional Sudoku puzzles of arbitrary box dimensions. A video demonstrating use of this project can be found in this [video demo](https://youtu.be/jNQXAC9IVRw).
 
 ### Description
 
