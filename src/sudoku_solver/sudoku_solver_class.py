@@ -20,23 +20,85 @@ from sortedcontainers import SortedDict
 
 class Sudoku(object):
     """
-    Class whose instances each represent a specific traditional
+    Class representing traditional Sudoku puzzles.
+
+    Each instance of this class represents a specific traditional
     Sudoku puzzle with boxes of arbitrary dimensions, including
-    a method to find all possible solutions (if any) to the
+    a method to find the possible solutions (if any) to the
     represented Sudoku.
 
-    Attributes:
-        object (_type_): _description_
+    Sudoku is a puzzle based on a square grid, referred to as the
+    Sudoku board, with the number of rows or columns in that square
+    grid referred to as the board side length.
+    The board is partitioned into equally shaped and orientated
+    rectangular boxes, themselves in a grid formation, each box
+    containing a number of grid elements equal to the board side
+    length, where the number of such boxes partitioning the grid is
+    also (necessarily) that same number. 
+    The Sudoku starts with some of the elements of the board
+    assigned numbers (the so-called initially set elements) between
+    1 and the board side length inclusive. The aim of the puzzle is
+    to assign a single integer between 1 and the board side length
+    inclusive to every remaining element in the Sudoku board so
+    that the resultant completed Sudoku board obeys the Sudoku
+    solution rules.
+    The Sudoku solution rules are:
+     1) Every element of the Sudoku board is assigned a dingle
+        integer between 1 and the board side length inclusive.
+     2) For each row, column and box of the Sudoku board, the
+        numbers in the elements in that region must collectively
+        include each integer between 1 and the board side length
+        inclusive exactly once.
+    Although ideally the solution to a given Sudoku should be
+    unique (as is the case for those presented as puzzles, for
+    example in newspapers), in general a Sudoku may have many
+    or no solutions.
 
-        box_shape (tuple[int, int]):
-        
+    While the standard traditional Sudoku uses 3x3 boxes (resulting
+    in a board side length and maximum number of 9), this class is
+    capable of representing and solving Sudoku puzzles of with boxes
+    of arbitrary (strictly positive) dimensions.
+
+    In this class, we define the Sudoku by its box shape (a 2-tuple
+    of strictly positive integers, the first representing the number
+    of rows the box spans and the second the number of columns the
+    box spans), from which the board side length can be derived
+    by calculating the number of elements such a box contains (i.e.
+    the product of the number of rows with the number of columns
+    the box spans).
+
+    Attributes:
+        box_shape (tuple[int, int], Read-only): 2-tuple of strictly
+                positive integers specifying the shape of the
+                sudoku boxes, where index 0 represents the number
+                of rows and index 1 represents the number of columns
+                (as given on initialization).
+                This determines the size of the Sudoku grid, it being
+                a square with side length equal to the product of the
+                two box_shape dimensions.
                 Note that this means that moving along a given row
                 of the Sudoku, box_shape[1] different boxes are
                 encountered and moving down a given column,
                 box_shape[0] different boxes are encountered.
-
+        initial_board (tuple[tuple[int, ...], ...], Read-only): Tuple of
+                tuples of ints representing the values in the initial
+                Sudoku board (as given on initialization).
+                The outer tuple and each inner tuple have length equal
+                to the attribute board_side_length, with the inner
+                tuples representing the initial Sudoku board rows in
+                order from top to bottom, and each integer representing
+                the Sudoku board elements in that row from left to right,
+                with elements that are initially set (i.e. the values
+                that are given at the beginning of the puzzle) equal to
+                that set value and elements that are not initially set
+                (i.e. the values that are to be determined when solving
+                the puzzle) equal to 0.
+        board_side_length (int, Read-only): Strictly positive integer
+                representing the number of rows and columns in the Sudoku
+                board (which we refer to as the side length of the Sudoku
+                board). This is derived from the attribute box_shape,
+                being the product of the two values in that attribute.
     """
-    region_typ_strs = ["row", "column", "box"]
 
     def __init__(
         self,
