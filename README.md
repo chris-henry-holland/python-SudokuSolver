@@ -15,7 +15,47 @@ However, the main feature of the Sudoku class is its ability to solve the Sudoku
 
 ### How to use
 
+Here, examples are given as to basic use of the module. These make use of the following 3x3 Sudoku, which is the Sudoku stored in src/sudoku_csv_files/three_by_three/easy3x3_1.csv:
+
+```
+ -----------------------------
+┆ 7  8    │ 4       │ 1  2    ┆
+┆ 6       │    7  5 │       9 ┆
+┆         │ 6     1 │    7  8 ┆
+┆─────────┼─────────┼─────────┆
+┆       7 │    4    │ 2  6    ┆
+┆       1 │    5    │ 9  3    ┆
+┆ 9     4 │    6    │       5 ┆
+┆─────────┼─────────┼─────────┆
+┆    7    │ 3       │    1  2 ┆
+┆ 1  2    │       7 │ 4       ┆
+┆    4  9 │ 2     6 │       7 ┆
+ -----------------------------
+```
+
+This has a unique solution (with the initially set elements in bold):
+
+```
+ -----------------------------
+┆ 7  8  5 │ 4  3  9 │ 1  2  6 ┆
+┆ 6  1  2 │ 8  7  5 │ 3  4  9 ┆
+┆ 4  9  3 │ 6  2  1 │ 5  7  8 ┆
+┆─────────┼─────────┼─────────┆
+┆ 8  5  7 │ 9  4  3 │ 2  6  1 ┆
+┆ 2  6  1 │ 7  5  8 │ 9  3  4 ┆
+┆ 9  3  4 │ 1  6  2 │ 7  8  5 ┆
+┆─────────┼─────────┼─────────┆
+┆ 5  7  8 │ 3  9  4 │ 6  1  2 ┆
+┆ 1  2  6 │ 5  8  7 │ 4  9  3 ┆
+┆ 3  4  9 │ 2  1  6 │ 8  5  7 ┆
+ -----------------------------
+```
+
+In the following examples, when loading from .csv files it is assumed the local directory is the directory of this README.md file, and the file referenced contains the above Sudoku.
+
 #### Use within other Python programs and scripts
+
+The following example shows 
 
 #### Use as a script
 
