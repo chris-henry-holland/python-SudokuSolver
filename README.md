@@ -37,7 +37,7 @@ which is the Sudoku stored in:
 
 [src/sudoku_csv_files/three_by_three/easy3x3_1.csv](src/sudoku_csv_files/three_by_three/easy3x3_1.csv)
 
-This has a unique solution (with the initially set elements in bold):
+This Sudoku has a unique solution (with the initially set elements in bold):
 <pre>
  -----------------------------
 ┆ <b>7</b>  <b>8</b>  5 │ <b>4</b>  3  9 │ <b>1</b>  <b>2</b>  6 ┆
@@ -55,9 +55,18 @@ This has a unique solution (with the initially set elements in bold):
 </pre>
 In the following examples, when loading from .csv files it is assumed the local directory is the directory of this README.md file, and the file referenced contains the above Sudoku.
 
-### Use within other Python programs and scripts
+### Use as a module
 
-The following example shows 
+The following example demonstrates how the Sudoku class can be used inside a Python program:
+
+```
+from sudoku_solver.sudoku_solver_class import Sudoku
+
+sudoku = Sudoku(
+    ,
+    board_shape=(3, 3)
+)
+```
 
 ### Use as a script
 
@@ -77,7 +86,7 @@ This console command then performs the following steps:
     - If the '-s' flag was used then a single solution, if any exist is printed to console, labelled as 'Solution'.
 4) Finally, the total time taken to find the solution or solutions is printed to console and the script ends.
 
-For example, using the example Sudoku .csv file [easy3x3_1.csv](src/sudoku_csv_files/three_by_three/easy3x3_1.csv) (full path given above), use of the script without and with the '-s' flag results in the respective following outputs:
+For example, using the example Sudoku .csv file [easy3x3_1.csv](src/sudoku_csv_files/three_by_three/easy3x3_1.csv) (full path given above), use of the script without the '-s' flag results in the respective following output:
 
 ```bash
 $ python src/sudoku_solver/sudoku_solver_class.py src/sudoku_csv_files/three_by_three/easy3x3_1.csv
@@ -116,6 +125,8 @@ This Sudoku has exactly 1 solution
 time to search for all possible solutions = 0.0364 seconds
 </pre>
 
+While with the '-s' flag results in the respective following output:
+
 ```bash
 $ python src/sudoku_solver/sudoku_solver_class.py src/sudoku_csv_files/three_by_three/easy3x3_1.csv -s
 ```
@@ -123,7 +134,7 @@ $ python src/sudoku_solver/sudoku_solver_class.py src/sudoku_csv_files/three_by_
 Initial Sudoku:
  -----------------------------
 ┆ <b>7</b>  <b>8</b>    │ <b>4</b>       │ <b>1</b>  <b>2</b>    ┆
-┆ <b>6</b>        │    <b>7</b>  <b>5</b> │       <b>9</b> ┆
+┆ <b>6</b>       │    <b>7</b>  <b>5</b> │       <b>9</b> ┆
 ┆         │ <b>6</b>     <b>1</b> │    <b>7</b>  <b>8</b> ┆
 ┆─────────┼─────────┼─────────┆
 ┆       <b>7</b> │    <b>4</b>    │ <b>2</b>  <b>6</b>    ┆
@@ -151,7 +162,11 @@ Solution
 total search time before finding a solution = 0.0359 seconds
 </pre>
 
-Note that the values set in the initial Sudoku are marked in bold for all printed Sudokus, including the printing of the initial Sudoku itself (resulting in all of its non-empty elements being bold).
+Note that the values set in the initial Sudoku are marked in bold for all printed Sudokus, including for the initial Sudoku itself (resulting in all of its non-empty elements being bold).
+
+### Unit testing
+
+
 
 ## Dependencies
 
@@ -170,6 +185,7 @@ The method used in the solution of the Sudoku makes use a combination of the fol
 5) Stacks (implemented as a Python list)
 
 ## Potential future developments
+
 This project has been built with the potential for further optimisation and expansion in the future, and is very much a starting point, either for further development of the Sudoku class itself or through descendant classes. Ideas for such future work include:
 1) Further optimisation of the solution algorithm, specifically the simplification stage. This may include implementation of known intermediate and advanced solving techniques such as hidden or naked pairs and triples, X-wing, swordfish etc.
 2) Implementing a GUI, for example using tkinter or pygame
@@ -178,3 +194,7 @@ This project has been built with the potential for further optimisation and expa
 ## License
 
 [MIT License](LICENSE)
+
+## Credits
+
+This module was written entirely by myself (Christopher Holland) without the use of AI.
