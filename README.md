@@ -1,5 +1,5 @@
 # python-SudokuSolver
-Classes and functions to represent and solve of traditional Sudoku puzzles of arbitrary box dimensions. A video demonstrating use of this project can be found in this [video demo](https://youtu.be/jNQXAC9IVRw).
+Classes and functions to represent and solve of traditional Sudoku puzzles of arbitrary box dimensions.
 
 ## Description
 
@@ -11,7 +11,9 @@ There are currently two main ways to load a Sudoku as a Sudoku object:
 
 Once loaded, a formatted version of the Sudoku board can then be printed to console using the print command.
 
-However, the main feature of the Sudoku class is its ability to solve the Sudoku.
+The central feature of the Sudoku class is its ability to solve the Sudoku, with the solutionGenerator() method iterating over every possible solution to the Sudoku. The implementation of the solution is described in more detail in the section [Brief overview of solution method](#brief-overview-of-solution-method).
+
+Additionally, sudoku_solver_class.py can be used both as a module (giving the user access to all the methods of the Sudoku class, including the solutionGenerator() method), or as a script (which finds a single solution or every solution to a Sudoku in a given .csv file). Further detail with examples of both of these use cases are presented in the following section [Usage](#usage), with use as a module discussed in the subsection [Use as a Module](#use-as-a-module) and use as a script discussed in the subsection [Use as a script](#use-as-a-script).
 
 ## Usage
 
@@ -57,16 +59,85 @@ In the following examples, when loading from .csv files it is assumed the local 
 
 ### Use as a module
 
-The following example demonstrates how the Sudoku class can be used inside a Python program:
+The following example demonstrates how sudoku_solver_class.py can be used as a module to solve a manually defined Sudoku:
 
-```
-from sudoku_solver.sudoku_solver_class import Sudoku
+<pre>
+>>> from sudoku_solver.sudoku_solver_class import Sudoku
+>>> sudoku_board = [
+...     [5, 3, 0, 0, 7, 0, 0, 0, 0],
+...     [6, 0, 0, 1, 9, 5, 0, 0, 0],
+...     [0, 9, 8, 0, 0, 0, 0, 6, 0],
+...     [8, 0, 0, 0, 6, 0, 0, 0, 3],
+...     [4, 0, 0, 8, 0, 3, 0, 0, 1],
+...     [7, 0, 0, 0, 2, 0, 0, 0, 6],
+...     [0, 6, 0, 0, 0, 0, 2, 8, 0],
+...     [0, 0, 0, 4, 1, 9, 0, 0, 5],
+...     [0, 0, 0, 0, 8, 0, 0, 7, 9],
+... ]
+>>> sudoku = Sudoku(sudoku_board, box_shape=(3, 3))
+>>> print("Initial Sudoku board:")
+... print(sudoku)
+... print("Solutions:")
+... for sol in sudoku.solutionsGenerator():
+...     if sudoku.checkSolutionValid(sol):
+...         print(
+...             sudoku.getBoardPrintString(
+...                 sol,
+...                 sudoku.box_shape,
+...                 initial_numbers_bold=True,
+...                 initial_board=sudoku.initial_board,
+...             )
+...         )
+Initial Sudoku board:
+ -----------------------------
+┆ <b>7</b>  <b>8</b>    │ <b>4</b>       │ <b>1</b>  <b>2</b>    ┆
+┆ <b>6</b>       │    <b>7</b>  <b>5</b> │       <b>9</b> ┆
+┆         │ <b>6</b>     <b>1</b> │    <b>7</b>  <b>8</b> ┆
+┆─────────┼─────────┼─────────┆
+┆       <b>7</b> │    <b>4</b>    │ <b>2</b>  <b>6</b>    ┆
+┆       <b>1</b> │    <b>5</b>    │ <b>9</b>  <b>3</b>    ┆
+┆ <b>9</b>     <b>4</b> │    <b>6</b>    │       <b>5</b> ┆
+┆─────────┼─────────┼─────────┆
+┆    <b>7</b>    │ <b>3</b>       │    <b>1</b>  <b>2</b> ┆
+┆ <b>1</b>  <b>2</b>    │       <b>7</b> │ <b>4</b>       ┆
+┆    <b>4</b>  <b>9</b> │ <b>2</b>     <b>6</b> │       <b>7</b> ┆
+ -----------------------------
+Solutions:
+ -----------------------------
+┆ <b>7</b>  <b>8</b>  5 │ <b>4</b>  3  9 │ <b>1</b>  <b>2</b>  6 ┆
+┆ <b>6</b>  1  2 │ 8  <b>7</b>  <b>5</b> │ 3  4  <b>9</b> ┆
+┆ 4  9  3 │ <b>6</b>  2  <b>1</b> │ 5  <b>7</b>  <b>8</b> ┆
+┆─────────┼─────────┼─────────┆
+┆ 8  5  <b>7</b> │ 9  <b>4</b>  3 │ <b>2</b>  <b>6</b>  1 ┆
+┆ 2  6  <b>1</b> │ 7  <b>5</b>  8 │ <b>9</b>  <b>3</b>  4 ┆
+┆ <b>9</b>  3  <b>4</b> │ 1  <b>6</b>  2 │ 7  8  <b>5</b> ┆
+┆─────────┼─────────┼─────────┆
+┆ 5  <b>7</b>  8 │ <b>3</b>  9  4 │ 6  <b>1</b>  <b>2</b> ┆
+┆ <b>1</b>  <b>2</b>  6 │ 5  8  <b>7</b> │ <b>4</b>  9  3 ┆
+┆ 3  <b>4</b>  <b>9</b> │ <b>2</b>  1  <b>6</b> │ 8  5  <b>7</b> ┆
+ -----------------------------
+</pre>
 
-sudoku = Sudoku(
-    ,
-    board_shape=(3, 3)
-)
-```
+The following example demonstrates how the module can be used load a Sudoku from a .csv file as Sudoku object (assuming the working directory is the directory containing this README.md file).
+
+<pre>
+>>> from sudoku_solver.sudoku_solver_class import Sudoku
+>>> sudoku = Sudoku.loadSudokuFromCSV("src/sudoku_csv_files/three_by_three/easy3x3_1.csv")
+>>> print(sudoku)
+ -----------------------------
+┆ <b>7</b>  <b>8</b>    │ <b>4</b>       │ <b>1</b>  <b>2</b>    ┆
+┆ <b>6</b>       │    <b>7</b>  <b>5</b> │       <b>9</b> ┆
+┆         │ <b>6</b>     <b>1</b> │    <b>7</b>  <b>8</b> ┆
+┆─────────┼─────────┼─────────┆
+┆       <b>7</b> │    <b>4</b>    │ <b>2</b>  <b>6</b>    ┆
+┆       <b>1</b> │    <b>5</b>    │ <b>9</b>  <b>3</b>    ┆
+┆ <b>9</b>     <b>4</b> │    <b>6</b>    │       <b>5</b> ┆
+┆─────────┼─────────┼─────────┆
+┆    <b>7</b>    │ <b>3</b>       │    <b>1</b>  <b>2</b> ┆
+┆ <b>1</b>  <b>2</b>    │       <b>7</b> │ <b>4</b>       ┆
+┆    <b>4</b>  <b>9</b> │ <b>2</b>     <b>6</b> │       <b>7</b> ┆
+ -----------------------------
+</pre>
 
 ### Use as a script
 
@@ -166,7 +237,15 @@ Note that the values set in the initial Sudoku are marked in bold for all printe
 
 ### Unit testing
 
+Unit testing is implemented using pytest, with all unit tests in the file:
 
+[src/sudoku_solver/test_sudoku_solver_class.py](src/sudoku_solver/test_sudoku_solver_class.py)
+
+The whole suite of unit tests can be performed using the console command (where with working directory is assumed to be the directory containing this README.md file):
+
+```bash
+$ pytest src/sudoku_solver/test_sudoku_solver_class.py
+```
 
 ## Dependencies
 
