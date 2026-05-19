@@ -1626,7 +1626,9 @@ class Sudoku(object):
                     pos_enc_in_stk.add(enc_idx2)
                     pos_enc_stk.append(enc_idx2)
             
-            if np.bitwise_count(bm0) != 1: continue
+            if np.bitwise_count(bm0) != 1:
+                
+                continue
 
             # The changed element has only one option
             bm0_compl = ~bm0
@@ -1740,16 +1742,18 @@ class Sudoku(object):
         
         """
         state_bm, opts_count_dict, region_available_nums_bm, region_available_spaces_bm = self.createInitialStateVariables()
+        
         pos_enc_changed = set(range(self.board_side_length * self.board_side_length))
         for pos_enc in opts_count_dict.values():
             pos_enc_changed -= pos_enc
-        self.simplifyState(
+        if not self.simplifyState(
             state_bm,
             opts_count_dict,
             region_available_nums_bm,
             region_available_spaces_bm,
             pos_enc_changed,
-        )
+        ):
+            return
 
         def recur(
             state_bm: np.ndarray,
