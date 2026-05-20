@@ -14,6 +14,14 @@ def test_SudokuManualInitialization_valid() -> None:
 
     boards.append(
         [
+            [0, 0],
+            [0, 0],
+        ]
+    )
+    box_shapes.append((2, 1))
+
+    boards.append(
+        [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
             [0, 0, 0, 0],
