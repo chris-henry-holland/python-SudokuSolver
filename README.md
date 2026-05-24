@@ -266,9 +266,10 @@ The method used in the solution of the Sudoku makes use a combination of the fol
 ## Potential future developments
 
 This project has been built with the potential for further optimisation and expansion in the future, and is very much a starting point, either for further development of the Sudoku class itself or through descendant classes. Ideas for such future work include:
-1) Further optimisation of the solution algorithm, specifically the simplification stage. This may include implementation of known intermediate and advanced solving techniques such as hidden or naked pairs and triples, X-wing, swordfish etc.
-2) Implementing a GUI, for example using tkinter or pygame
-3) Allowing the user to attempt to solve the Sudoku, with the potential for spotting mistakes made by the user. This would be more user friendly if done using a GUI.
+
+- [ ] Further optimisation of the solution algorithm, specifically the simplification stage. This may include implementation of known intermediate and advanced solving techniques such as hidden or naked pairs and triples, X-wing, swordfish etc.
+- [ ] Implementing a GUI, for example using tkinter or pygame
+- [ ] Allowing the user to attempt to solve the Sudoku, with the potential for spotting mistakes made by the user. This would be more user friendly if done using a GUI.
 
 ## License
 
